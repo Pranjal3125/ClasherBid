@@ -13,6 +13,7 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -216,6 +217,13 @@ public final class AuctionGui implements Listener, CommandExecutor {
     private void place(Player player, double amount) {
         player.sendMessage(auctions.placeBid(player, amount));
         open(player);
+    }
+
+    @EventHandler
+    public void onQuit(PlayerQuitEvent event) {
+        UUID id = event.getPlayer().getUniqueId();
+        awaitingCustom.remove(id);
+        pendingConfirm.remove(id);
     }
 
     @EventHandler
