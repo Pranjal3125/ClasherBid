@@ -168,8 +168,15 @@ public final class AuctionManager implements Listener {
             pendingBidder = null;
             pendingBidderName = "";
             pendingBidAmount = 0;
-            pendingBidTransactionId = null;
-            persist();
+            if (!persist()) {
+                settlementReview = "BID_PENDING";
+                pendingBidder = player.getUniqueId();
+                pendingBidderName = player.getName();
+                pendingBidAmount = amount;
+                pendingBidTransactionId = pendingBidTransactionId;
+                Bukkit.broadcastMessage("§cClasherBid: failed withdrawal could not be cleared durably; auction frozen for admin review.");
+                return "§eBid was not accepted, but auction is frozen for admin review.";
+            }
             return "§cBid failed: " + withdrawal.errorMessage;
         }
 
@@ -204,12 +211,18 @@ public final class AuctionManager implements Listener {
             Bukkit.broadcastMessage("§cClasherBid: bid accepted but persistence is uncertain; auction frozen for admin review.");
             return "§eBid payment accepted, but auction is frozen for admin review.";
         }
+        UUID acceptedTransactionId = pendingBidTransactionId;
         settlementReview = "";
         pendingBidder = null;
         pendingBidderName = "";
         pendingBidAmount = 0;
         pendingBidTransactionId = null;
-        persist();
+        if (!persist()) {
+            settlementReview = "BID_PENDING_ACCEPTED";
+            pendingBidTransactionId = acceptedTransactionId;
+            Bukkit.broadcastMessage("§cClasherBid: accepted bid marker could not be cleared; auction frozen for admin review.");
+            return "§eBid payment accepted, but auction is frozen for admin review.";
+        }
         Bukkit.broadcastMessage("§6§lCLASHERBID §e" + player.getName() + " §7bid §a"
                 + economy.format(amount) + " §7on §f" + item.getType());
         return "§aYour bid of §e" + economy.format(amount) + " §awas accepted. Funds are held until outbid or auction end.";
@@ -270,9 +283,13 @@ public final class AuctionManager implements Listener {
             EconomyResponse deposit = economy.depositPlayer(Bukkit.getOfflinePlayer(payee), escrow);
             if (!deposit.transactionSuccess()) {
                 settlementReview = "";
-                Bukkit.broadcastMessage("§cClasherBid payout failed; settlement will retry.");
                 endsAt = System.currentTimeMillis() + 60_000L;
-                persist();
+                if (!persist()) {
+                    settlementReview = "PAYOUT_PENDING";
+                    Bukkit.broadcastMessage("§cClasherBid payout response failed, but review marker could not be cleared; auction remains frozen.");
+                    return;
+                }
+                Bukkit.broadcastMessage("§cClasherBid payout failed; settlement will retry.");
                 schedule();
                 return;
             }
@@ -393,7 +410,14 @@ public final class AuctionManager implements Listener {
     private boolean queueRefund(UUID playerId, double amount, String transactionId) {
         if (playerId == null || !Double.isFinite(amount) || amount <= 0 || transactionId == null) return false;
         String transactionPath = "recovery.refund-transactions." + transactionId;
-        if (plugin.getConfig().contains(transactionPath)) return true;
+        if (plugin.getConfig().contains(transactionPath)) {
+            String recordedPlayer = plugin.getConfig().getString(transactionPath + ".player", "");
+            double recordedAmount = plugin.getConfig().getDouble(transactionPath + ".amount", Double.NaN);
+            if (playerId.toString().equals(recordedPlayer) && Double.isFinite(recordedAmount)
+                    && Math.abs(recordedAmount - amount) < 0.000001) return true;
+            plugin.getLogger().severe("Refund transaction key collision or corrupt ledger entry: " + transactionId);
+            return false;
+        }
         String refundPath = "recovery.refund." + playerId;
         double previous = plugin.getConfig().getDouble(refundPath, 0.0);
         plugin.getConfig().set(transactionPath + ".player", playerId.toString());
@@ -475,23 +499,41 @@ public final class AuctionManager implements Listener {
         if (!response.transactionSuccess()) return false; // keep marker for manual review
         plugin.getConfig().set("recovery.refund." + playerId, null);
         plugin.getConfig().set("recovery.refund-review." + playerId, null);
-        return persistConfig();
+        if (persistConfig()) return true;
+        plugin.getConfig().set("recovery.refund." + playerId, amount);
+        plugin.getConfig().set("recovery.refund-review." + playerId, "REFUND_PENDING");
+        return false;
     }
 
     /** paid=true clears the debt; paid=false authorizes a later retry after balance verification. */
     public boolean resolveRefundReview(UUID playerId, boolean paid) {
-        if (refundReview(playerId).isEmpty()) return false;
-        if (paid) plugin.getConfig().set("recovery.refund." + playerId, null);
-        plugin.getConfig().set("recovery.refund-review." + playerId, null);
-        return persistConfig();
+        String reviewPath = "recovery.refund-review." + playerId;
+        String refundPath = "recovery.refund." + playerId;
+        String previousReview = plugin.getConfig().getString(reviewPath, "");
+        double previousAmount = plugin.getConfig().getDouble(refundPath, 0.0);
+        if (previousReview.isEmpty()) return false;
+        if (paid) plugin.getConfig().set(refundPath, null);
+        plugin.getConfig().set(reviewPath, null);
+        if (persistConfig()) return true;
+        plugin.getConfig().set(reviewPath, previousReview);
+        if (previousAmount > 0) plugin.getConfig().set(refundPath, previousAmount);
+        return false;
     }
 
     /** Durable, idempotent delivery queue; actual inventory changes happen only in /claim. */
     private boolean queueDelivery(UUID playerId, ItemStack stack, String transactionId) {
         if (playerId == null || stack == null || stack.getType().isAir() || transactionId == null) return false;
         String tx = "recovery.delivery-transactions." + transactionId;
-        if (plugin.getConfig().contains(tx)) return true;
+        if (plugin.getConfig().contains(tx)) {
+            String recordedPlayer = plugin.getConfig().getString(tx + ".player", "");
+            ItemStack recordedItem = plugin.getConfig().getItemStack(tx + ".item");
+            if (playerId.toString().equals(recordedPlayer) && recordedItem != null
+                    && recordedItem.isSimilar(stack) && recordedItem.getAmount() == stack.getAmount()) return true;
+            plugin.getLogger().severe("Delivery transaction key collision or corrupt ledger entry: " + transactionId);
+            return false;
+        }
         String path = "pending-delivery." + playerId;
+        Object previousValue = plugin.getConfig().get(path);
         java.util.List<?> raw = plugin.getConfig().getList(path);
         java.util.List<ItemStack> pending = new java.util.ArrayList<>();
         if (raw != null) for (Object value : raw) if (value instanceof ItemStack old) pending.add(old.clone());
@@ -502,7 +544,7 @@ public final class AuctionManager implements Listener {
         plugin.getConfig().set(tx + ".player", playerId.toString());
         plugin.getConfig().set(tx + ".item", stack.clone());
         if (persistConfig()) return true;
-        plugin.getConfig().set(path, raw);
+        plugin.getConfig().set(path, previousValue);
         plugin.getConfig().set(tx, null);
         return false;
     }
@@ -552,6 +594,8 @@ public final class AuctionManager implements Listener {
         plugin.getConfig().set(path, remaining.isEmpty() ? null : remaining);
         plugin.getConfig().set(reviewPath, null);
         if (!persistConfig()) {
+            plugin.getConfig().set(path, raw != null ? raw : legacy);
+            plugin.getConfig().set(reviewPath, "CLAIM_PENDING");
             player.sendMessage("§eDelivery was attempted but its final state could not be saved. Claim is frozen for admin review; do not retry.");
             return;
         }
