@@ -195,7 +195,16 @@ public final class AuctionManager implements Listener {
             // Persist a transaction intent before touching Vault. If the process crashes
             // in the uncertain window, startup will freeze settlement for admin review.
             settlementReview = "PAYOUT_PENDING";
-            persist();
+            if (!persist()) {
+                // Never touch Vault unless the transaction intent is durably recorded.
+                // No payout was attempted, so retrying after a delayed save is safe.
+                Bukkit.broadcastMessage("§cClasherBid payout paused: could not persist transaction intent.");
+                endsAt = System.currentTimeMillis() + 60_000L;
+                settlementReview = "";
+                persist();
+                schedule();
+                return;
+            }
             EconomyResponse deposit = economy.depositPlayer(Bukkit.getOfflinePlayer(payee), escrow);
             if (!deposit.transactionSuccess()) {
                 settlementReview = "";
