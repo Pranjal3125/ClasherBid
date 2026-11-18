@@ -14,7 +14,7 @@ GUI-based single-item auction plugin for Clasher Network.
 
 ## Admin commands
 
-- `/clasherbid start <minutes> <starting-price>` — start an auction using the item in the admin's main hand
+- `/clasherbid start <minutes> <starting-price>` — start an auction using the item in the admin's main hand (1–120 minutes; positive starting price)
 - `/clasherbid cancel` — cancel and refund
 - `/clasherbid status` — show current auction state\n- `/clasherbid history` — recent auction history\n- `/clasherbid recover <player>` — recover a recorded failed refund (admin only)
 
