@@ -27,7 +27,7 @@ public final class AuctionGui implements Listener, CommandExecutor {
     private final ClasherBidPlugin plugin;
     private final AuctionManager auctions;
     private final NamespacedKey actionKey;
-    private final Set<UUID> awaitingCustom = new HashSet<>();
+    private final Set<UUID> awaitingCustom = java.util.concurrent.ConcurrentHashMap.newKeySet();
     private final Map<UUID, Double> pendingConfirm = new HashMap<>();
 
     AuctionGui(ClasherBidPlugin plugin, AuctionManager auctions) {
