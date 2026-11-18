@@ -22,7 +22,9 @@ import java.util.logging.Level;
 public final class AuctionManager implements Listener {
     private final ClasherBidPlugin plugin;
     private final Economy economy;
-    private final File file;\n    private final File historyFile;\n    private final java.util.ArrayList<String> history = new java.util.ArrayList<>();
+    private final File file;
+    private final File historyFile;
+    private final java.util.ArrayList<String> history = new java.util.ArrayList<>();
     private ItemStack item;
     private UUID seller;
     private UUID bidder;
@@ -37,7 +39,8 @@ public final class AuctionManager implements Listener {
     AuctionManager(ClasherBidPlugin plugin, Economy economy) {
         this.plugin = plugin;
         this.economy = economy;
-        this.file = new File(plugin.getDataFolder(), "active-auction.yml");\n        this.historyFile = new File(plugin.getDataFolder(), "auction-history.yml");
+        this.file = new File(plugin.getDataFolder(), "active-auction.yml");
+        this.historyFile = new File(plugin.getDataFolder(), "auction-history.yml");
     }
 
     public boolean isActive() { return active; }
@@ -46,7 +49,11 @@ public final class AuctionManager implements Listener {
     public UUID highestBidder() { return bidder; }
     public String highestBidderName() { return bidderName; }
     public long secondsLeft() { return active ? Math.max(0, (endsAt - System.currentTimeMillis() + 999) / 1000) : 0; }
-    public double nextMinimum() { return active ? currentBid + plugin.getConfig().getDouble("minimum-increment", 100.0) : 0; }\n    private final java.util.ArrayDeque<String> bidHistory = new java.util.ArrayDeque<>();\n    public java.util.List<String> recentBids() { return java.util.List.copyOf(bidHistory); }\n    public java.util.List<String> auctionHistory() { return java.util.List.copyOf(history); }\n    private void recordBid(String name, double amount) { bidHistory.addFirst(name + " : " + economy.format(amount)); while (bidHistory.size() > 8) bidHistory.removeLast(); }
+    public double nextMinimum() { return active ? currentBid + plugin.getConfig().getDouble("minimum-increment", 100.0) : 0; }
+    private final java.util.ArrayDeque<String> bidHistory = new java.util.ArrayDeque<>();
+    public java.util.List<String> recentBids() { return java.util.List.copyOf(bidHistory); }
+    public java.util.List<String> auctionHistory() { return java.util.List.copyOf(history); }
+    private void recordBid(String name, double amount) { bidHistory.addFirst(name + " : " + economy.format(amount)); while (bidHistory.size() > 8) bidHistory.removeLast(); }
 
     public boolean start(Player admin, ItemStack stack, double openingBid, long durationSeconds) {
         if (active || stack == null || stack.getType().isAir() || durationSeconds < 30
@@ -85,7 +92,8 @@ public final class AuctionManager implements Listener {
         bidderName = player.getName();
         currentBid = amount;
         escrow = amount;
-        lastBidAt = System.currentTimeMillis();\n        recordBid(bidderName, amount);
+        lastBidAt = System.currentTimeMillis();
+        recordBid(bidderName, amount);
 
         if (previousBidder != null) refund(previousBidder, previousEscrow);
         if (plugin.getConfig().getBoolean("anti-sniping.enabled", true)
@@ -144,7 +152,16 @@ public final class AuctionManager implements Listener {
         clear();
     }
 
-    private void recordHistory(String winner, double amount) {\n        String entry = item.getType() + " | " + winner + " | " + economy.format(amount) + " | " + java.time.Instant.now();\n        history.add(0, entry);\n        while (history.size() > 25) history.remove(history.size() - 1);\n        YamlConfiguration data = new YamlConfiguration();\n        data.set("entries", history);\n        try { data.save(historyFile); } catch (IOException ex) { plugin.getLogger().log(Level.WARNING, "Could not save auction history", ex); }\n    }\n\n    private UUID payoutAccount() {
+    private void recordHistory(String winner, double amount) {
+        String entry = item.getType() + " | " + winner + " | " + economy.format(amount) + " | " + java.time.Instant.now();
+        history.add(0, entry);
+        while (history.size() > 25) history.remove(history.size() - 1);
+        YamlConfiguration data = new YamlConfiguration();
+        data.set("entries", history);
+        try { data.save(historyFile); } catch (IOException ex) { plugin.getLogger().log(Level.WARNING, "Could not save auction history", ex); }
+    }
+
+    private UUID payoutAccount() {
         String configured = plugin.getConfig().getString("payout-player", "").trim();
         if (configured.isEmpty()) return seller;
         OfflinePlayer account = Bukkit.getOfflinePlayer(configured);
