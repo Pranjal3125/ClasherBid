@@ -38,6 +38,7 @@ public final class AuctionManager implements Listener {
     private boolean active;
     private String settlementReview = "";
     private UUID pendingBidder;
+    private UUID pendingBidTransactionId;
     private String pendingBidderName = "";
     private double pendingBidAmount;
     private BukkitTask timer;
@@ -65,6 +66,7 @@ public final class AuctionManager implements Listener {
     public boolean start(Player admin, ItemStack stack, double openingBid, long durationSeconds) {
         if (active || stack == null || stack.getType().isAir() || durationSeconds < 30
                 || !Double.isFinite(openingBid) || openingBid < 0) return false;
+        auctionId = UUID.randomUUID();
         item = stack.clone();
         seller = admin.getUniqueId();
         bidder = null;
@@ -144,6 +146,7 @@ public final class AuctionManager implements Listener {
 
         // Durable intent before Vault withdrawal: an uncertain crash is frozen for admin review.
         pendingBidder = player.getUniqueId();
+        pendingBidTransactionId = UUID.randomUUID();
         pendingBidderName = player.getName();
         pendingBidAmount = amount;
         settlementReview = "BID_PENDING";
@@ -152,6 +155,7 @@ public final class AuctionManager implements Listener {
             pendingBidder = null;
             pendingBidderName = "";
             pendingBidAmount = 0;
+            pendingBidTransactionId = null;
             persist();
             return "§cBid paused: auction state could not be saved.";
         }
@@ -161,6 +165,7 @@ public final class AuctionManager implements Listener {
             pendingBidder = null;
             pendingBidderName = "";
             pendingBidAmount = 0;
+            pendingBidTransactionId = null;
             persist();
             return "§cBid failed: " + withdrawal.errorMessage;
         }
@@ -179,9 +184,7 @@ public final class AuctionManager implements Listener {
         recordBid(bidderName, amount);
         if (previousBidder != null && previousEscrow > 0) {
             // Queue the previous escrow as a liability; never deposit during bid replacement.
-            String refundPath = "recovery.refund." + previousBidder;
-            plugin.getConfig().set(refundPath, plugin.getConfig().getDouble(refundPath, 0.0) + previousEscrow);
-            if (!persistConfig()) {
+            if (!queueRefund(previousBidder, previousEscrow, "outbid-" + pendingBidTransactionId)) {
                 Bukkit.broadcastMessage("§cClasherBid: previous bidder refund could not be saved; auction frozen for admin review.");
                 return "§eBid received, but refund accounting could not be saved. Auction frozen for admin review.";
             }
@@ -198,6 +201,7 @@ public final class AuctionManager implements Listener {
         pendingBidder = null;
         pendingBidderName = "";
         pendingBidAmount = 0;
+        pendingBidTransactionId = null;
         persist();
         Bukkit.broadcastMessage("§6§lCLASHERBID §e" + player.getName() + " §7bid §a"
                 + economy.format(amount) + " §7on §f" + item.getType());
@@ -295,6 +299,7 @@ public final class AuctionManager implements Listener {
         double previousEscrow = escrow;
         String previousReview = settlementReview;
         UUID intentBidder = pendingBidder;
+        UUID intentTransactionId = pendingBidTransactionId;
         String intentName = pendingBidderName;
         double intentAmount = pendingBidAmount;
         if (paid) {
@@ -304,9 +309,7 @@ public final class AuctionManager implements Listener {
             escrow = intentAmount;
             recordBid(bidderName, currentBid);
             if (previousBidder != null && previousEscrow > 0) {
-                String path = "recovery.refund." + previousBidder;
-                plugin.getConfig().set(path, plugin.getConfig().getDouble(path, 0.0) + previousEscrow);
-                if (!persistConfig()) {
+                if (!queueRefund(previousBidder, previousEscrow, "outbid-" + intentTransactionId)) {
                     bidder = previousBidder;
                     bidderName = previousBidderName;
                     currentBid = previousBid;
@@ -319,6 +322,7 @@ public final class AuctionManager implements Listener {
         pendingBidder = null;
         pendingBidderName = "";
         pendingBidAmount = 0;
+        pendingBidTransactionId = null;
         if (persist()) return true;
         // Restore in-memory frozen intent if the save failed; keep the server frozen.
         bidder = previousBidder;
@@ -329,6 +333,7 @@ public final class AuctionManager implements Listener {
         pendingBidder = intentBidder;
         pendingBidderName = intentName;
         pendingBidAmount = intentAmount;
+        pendingBidTransactionId = intentTransactionId;
         return false;
     }
 
@@ -346,9 +351,7 @@ public final class AuctionManager implements Listener {
         if (bidder != null && escrow > 0) {
             // Persist an unpaid refund liability instead of depositing immediately.
             // The guarded recovery command will require review before any payment.
-            String refundPath = "recovery.refund." + bidder;
-            plugin.getConfig().set(refundPath, plugin.getConfig().getDouble(refundPath, 0.0) + escrow);
-            if (!persistConfig()) {
+            if (!queueRefund(bidder, escrow, "settlement-" + auctionTransactionId())) {
                 plugin.getLogger().severe("Could not persist bidder refund liability; settlement remains frozen and item was not returned.");
                 return false;
             }
@@ -357,6 +360,29 @@ public final class AuctionManager implements Listener {
         Bukkit.broadcastMessage("§6ClasherBid §eSettlement manually confirmed unpaid by admin. Auction item returned.");
         clear();
         return true;
+    }
+
+    private UUID auctionId;
+
+    private String auctionTransactionId() {
+        if (auctionId == null) auctionId = UUID.randomUUID();
+        return auctionId.toString();
+    }
+
+    /** Adds a refund liability exactly once for a stable transaction key. */
+    private boolean queueRefund(UUID playerId, double amount, String transactionId) {
+        if (playerId == null || !Double.isFinite(amount) || amount <= 0 || transactionId == null) return false;
+        String transactionPath = "recovery.refund-transactions." + transactionId;
+        if (plugin.getConfig().contains(transactionPath)) return true;
+        String refundPath = "recovery.refund." + playerId;
+        double previous = plugin.getConfig().getDouble(refundPath, 0.0);
+        plugin.getConfig().set(transactionPath + ".player", playerId.toString());
+        plugin.getConfig().set(transactionPath + ".amount", amount);
+        plugin.getConfig().set(refundPath, previous + amount);
+        if (persistConfig()) return true;
+        plugin.getConfig().set(transactionPath, null);
+        plugin.getConfig().set(refundPath, previous > 0 ? previous : null);
+        return false;
     }
 
     private void recordHistory(String winner, double amount) {
@@ -551,6 +577,9 @@ public final class AuctionManager implements Listener {
         pendingBidder = parseUuid(yaml.getString("pendingBidder"));
         pendingBidderName = yaml.getString("pendingBidderName", "");
         pendingBidAmount = yaml.getDouble("pendingBidAmount", 0.0);
+        pendingBidTransactionId = parseUuid(yaml.getString("pendingBidTransactionId"));
+        auctionId = parseUuid(yaml.getString("auctionId"));
+        if (auctionId == null) auctionId = UUID.randomUUID();
         active = item != null && seller != null;
         if (active) {
             if (!settlementReview.isEmpty()) {
@@ -578,6 +607,8 @@ public final class AuctionManager implements Listener {
         yaml.set("pendingBidder", pendingBidder == null ? null : pendingBidder.toString());
         yaml.set("pendingBidderName", pendingBidderName);
         yaml.set("pendingBidAmount", pendingBidAmount);
+        yaml.set("pendingBidTransactionId", pendingBidTransactionId == null ? null : pendingBidTransactionId.toString());
+        yaml.set("auctionId", auctionId == null ? null : auctionId.toString());
         yaml.set("item", item);
         yaml.set("seller", seller == null ? null : seller.toString());
         yaml.set("bidder", bidder == null ? null : bidder.toString());
