@@ -222,24 +222,32 @@ public final class AuctionManager implements Listener {
     /** Resolve an interrupted bid withdrawal; paid accepts it, unpaid clears the intent. */
     public boolean resolveBidReview(boolean paid) {
         if (!active || !settlementReview.startsWith("BID_PENDING")) return false;
-        // Accepted state was persisted with a review marker: only clear the marker, never reverse it.
+        // Accepted state was persisted with a review marker: only clear it after successful save.
         if (settlementReview.equals("BID_PENDING_ACCEPTED")) {
             if (!paid) return false;
             settlementReview = "";
-            return persist();
+            if (persist()) return true;
+            settlementReview = "BID_PENDING_ACCEPTED";
+            return false;
         }
         if (pendingBidder == null || pendingBidAmount <= 0) return false;
+        UUID previousBidder = bidder;
+        String previousBidderName = bidderName;
+        double previousBid = currentBid;
+        double previousEscrow = escrow;
+        String previousReview = settlementReview;
+        UUID intentBidder = pendingBidder;
+        String intentName = pendingBidderName;
+        double intentAmount = pendingBidAmount;
         if (paid) {
-            UUID oldBidder = bidder;
-            double oldEscrow = escrow;
-            bidder = pendingBidder;
-            bidderName = pendingBidderName;
-            currentBid = pendingBidAmount;
-            escrow = pendingBidAmount;
+            bidder = intentBidder;
+            bidderName = intentName;
+            currentBid = intentAmount;
+            escrow = intentAmount;
             recordBid(bidderName, currentBid);
-            if (oldBidder != null && oldEscrow > 0) {
-                String path = "recovery.refund." + oldBidder;
-                plugin.getConfig().set(path, plugin.getConfig().getDouble(path, 0.0) + oldEscrow);
+            if (previousBidder != null && previousEscrow > 0) {
+                String path = "recovery.refund." + previousBidder;
+                plugin.getConfig().set(path, plugin.getConfig().getDouble(path, 0.0) + previousEscrow);
                 plugin.saveConfig();
             }
         }
@@ -247,7 +255,17 @@ public final class AuctionManager implements Listener {
         pendingBidder = null;
         pendingBidderName = "";
         pendingBidAmount = 0;
-        return persist();
+        if (persist()) return true;
+        // Restore in-memory frozen intent if the save failed; keep the server frozen.
+        bidder = previousBidder;
+        bidderName = previousBidderName;
+        currentBid = previousBid;
+        escrow = previousEscrow;
+        settlementReview = previousReview;
+        pendingBidder = intentBidder;
+        pendingBidderName = intentName;
+        pendingBidAmount = intentAmount;
+        return false;
     }
 
     public boolean resolveSettlementPaid() {
