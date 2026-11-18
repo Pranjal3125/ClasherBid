@@ -16,12 +16,27 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
 
     @Override public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!sender.hasPermission("clasherbid.admin")) { sender.sendMessage("§cNo permission."); return true; }
+        if (args.length == 3 && args[0].equalsIgnoreCase("refund-review")) {
+            org.bukkit.OfflinePlayer target = plugin.getServer().getOfflinePlayer(args[1]);
+            if (args[2].equalsIgnoreCase("paid")) {
+                if (auctions.resolveRefundReview(target.getUniqueId(), true))
+                    sender.sendMessage("§aMarked refund paid and cleared pending debt. Confirmed by your balance review.");
+                else sender.sendMessage("§cNo refund review marker exists for that player.");
+            } else if (args[2].equalsIgnoreCase("unpaid")) {
+                if (auctions.resolveRefundReview(target.getUniqueId(), false))
+                    sender.sendMessage("§eMarked refund unpaid. Retry is now authorized after balance verification.");
+                else sender.sendMessage("§cNo refund review marker exists for that player.");
+            } else sender.sendMessage("§cUsage: /clasherbid refund-review <player> <paid|unpaid>");
+            return true;
+        }
         if (args.length == 2 && args[0].equalsIgnoreCase("recover")) {
             org.bukkit.OfflinePlayer target = plugin.getServer().getOfflinePlayer(args[1]);
             double amount = auctions.pendingRefund(target.getUniqueId());
+            String review = auctions.refundReview(target.getUniqueId());
             if (amount <= 0) sender.sendMessage("§cNo pending refund for that player.");
+            else if (!review.isEmpty()) sender.sendMessage("§cRefund is frozen for review (§e" + review + "§c). Check balances, then use /clasherbid refund-review <player> <paid|unpaid>.");
             else if (auctions.recoverRefund(target.getUniqueId())) sender.sendMessage("§aRecovered " + plugin.economy().format(amount) + " for " + target.getName() + ".");
-            else sender.sendMessage("§cRefund recovery failed. The pending amount remains saved.");
+            else sender.sendMessage("§cRefund recovery failed or is now frozen for manual review. Do not retry blindly.");
             return true;
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("settlement")) {
@@ -82,6 +97,7 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage("§e/clasherbid status");
         sender.sendMessage("§e/clasherbid history");
         sender.sendMessage("§e/clasherbid recover <player>");
+        sender.sendMessage("§e/clasherbid refund-review <player> <paid|unpaid>");
         sender.sendMessage("§e/clasherbid settlement");
         sender.sendMessage("§e/clasherbid settlement <paid|unpaid>");
         return true;
@@ -89,10 +105,10 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
 
     @Override public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (!sender.hasPermission("clasherbid.admin")) return List.of();
-        if (args.length == 1) return List.of("start", "cancel", "status", "history", "recover", "settlement").stream()
+        if (args.length == 1) return List.of("start", "cancel", "status", "history", "recover", "refund-review", "settlement").stream()
                 .filter(s -> s.startsWith(args[0].toLowerCase(Locale.ROOT))).collect(Collectors.toList());
         if (args.length == 2 && args[0].equalsIgnoreCase("start")) return List.of("1", "5", "10", "15", "30", "60", "120");
-        if (args.length == 2 && args[0].equalsIgnoreCase("settlement")) return List.of("paid", "unpaid");
+        if (args.length == 2 && (args[0].equalsIgnoreCase("settlement") || args[0].equalsIgnoreCase("refund-review"))) return List.of("paid", "unpaid");
         if (args.length == 2 && args[0].equalsIgnoreCase("recover")) return plugin.getServer().getOnlinePlayers().stream().map(Player::getName).toList();
         if (args.length == 3 && args[0].equalsIgnoreCase("start")) return List.of("100", "500", "1000", "5000");
         return List.of();
