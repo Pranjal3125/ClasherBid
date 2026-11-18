@@ -230,19 +230,39 @@ public final class AuctionManager implements Listener {
             if (!online.getInventory().addItem(stack.clone()).isEmpty())
                 online.getWorld().dropItemNaturally(online.getLocation(), stack.clone());
         } else {
-            plugin.getConfig().set("pending-delivery." + playerId, stack.clone());
+            String path = "pending-delivery." + playerId;
+            java.util.List<?> raw = plugin.getConfig().getList(path);
+            java.util.List<ItemStack> pending = new java.util.ArrayList<>();
+            if (raw != null) for (Object value : raw) if (value instanceof ItemStack oldStack) pending.add(oldStack.clone());
+            ItemStack legacy = plugin.getConfig().getItemStack(path);
+            if (pending.isEmpty() && legacy != null) pending.add(legacy);
+            pending.add(stack.clone());
+            plugin.getConfig().set(path, pending);
             plugin.saveConfig();
         }
     }
 
     public void claim(Player player) {
-        ItemStack pending = plugin.getConfig().getItemStack("pending-delivery." + player.getUniqueId());
-        if (pending == null) return;
-        if (player.getInventory().addItem(pending).isEmpty()) {
-            plugin.getConfig().set("pending-delivery." + player.getUniqueId(), null);
-            plugin.saveConfig();
-            player.sendMessage("§aYour auction item has been delivered.");
+        String path = "pending-delivery." + player.getUniqueId();
+        java.util.List<?> raw = plugin.getConfig().getList(path);
+        java.util.List<ItemStack> pending = new java.util.ArrayList<>();
+        if (raw != null) for (Object value : raw) if (value instanceof ItemStack stack) pending.add(stack.clone());
+        ItemStack legacy = plugin.getConfig().getItemStack(path);
+        if (pending.isEmpty() && legacy != null) pending.add(legacy);
+        if (pending.isEmpty()) return;
+
+        java.util.List<ItemStack> remaining = new java.util.ArrayList<>();
+        int delivered = 0;
+        for (ItemStack stack : pending) {
+            if (stack == null || stack.getType().isAir()) continue;
+            java.util.Map<Integer, ItemStack> overflow = player.getInventory().addItem(stack.clone());
+            if (overflow.isEmpty()) delivered++;
+            else remaining.addAll(overflow.values());
         }
+        plugin.getConfig().set(path, remaining.isEmpty() ? null : remaining);
+        plugin.saveConfig();
+        if (delivered > 0) player.sendMessage("§aDelivered " + delivered + " pending auction item(s).");
+        if (!remaining.isEmpty()) player.sendMessage("§eInventory full. Remaining items will be kept for later.");
     }
 
     private void clear() {
