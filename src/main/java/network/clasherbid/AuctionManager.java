@@ -333,7 +333,7 @@ public final class AuctionManager implements Listener {
     }
 
     public boolean resolveSettlementUnpaid() {
-        if (!active || settlementReview.isEmpty() || settlementReview.startsWith("BID_PENDING") || item == null || seller == null) return false;
+        if (!active || settlementReview.isEmpty() || settlementReview.startsWith("BID_PENDING") || settlementReview.equals("START_PENDING") || item == null || seller == null) return false;
         if (bidder != null && escrow > 0) {
             // Persist an unpaid refund liability instead of depositing immediately.
             // The guarded recovery command will require review before any payment.
