@@ -39,6 +39,8 @@ public final class AuctionManager implements Listener {
     private String settlementReview = "";
     private UUID pendingBidder;
     private UUID pendingBidTransactionId;
+    private UUID pendingRefundPlayer;
+    private double pendingRefundAmount;
     private String pendingBidderName = "";
     private double pendingBidAmount;
     private BukkitTask timer;
@@ -183,11 +185,15 @@ public final class AuctionManager implements Listener {
         lastBidAt = System.currentTimeMillis();
         recordBid(bidderName, amount);
         if (previousBidder != null && previousEscrow > 0) {
-            // Queue the previous escrow as a liability; never deposit during bid replacement.
-            if (!queueRefund(previousBidder, previousEscrow, "outbid-" + pendingBidTransactionId)) {
+            // Keep the refund source in the auction journal until its idempotent ledger entry is durable.
+            pendingRefundPlayer = previousBidder;
+            pendingRefundAmount = previousEscrow;
+            if (!queueRefund(pendingRefundPlayer, pendingRefundAmount, "outbid-" + pendingBidTransactionId)) {
                 Bukkit.broadcastMessage("§cClasherBid: previous bidder refund could not be saved; auction frozen for admin review.");
                 return "§eBid received, but refund accounting could not be saved. Auction frozen for admin review.";
             }
+            pendingRefundPlayer = null;
+            pendingRefundAmount = 0;
         }
         if (plugin.getConfig().getBoolean("anti-sniping.enabled", true)
                 && secondsLeft() <= plugin.getConfig().getLong("anti-sniping.trigger-seconds", 15)) {
@@ -287,6 +293,11 @@ public final class AuctionManager implements Listener {
         // Accepted state was persisted with a review marker: only clear it after successful save.
         if (settlementReview.equals("BID_PENDING_ACCEPTED")) {
             if (!paid) return false;
+            if (pendingRefundPlayer != null && pendingRefundAmount > 0) {
+                if (!queueRefund(pendingRefundPlayer, pendingRefundAmount, "outbid-" + pendingBidTransactionId)) return false;
+                pendingRefundPlayer = null;
+                pendingRefundAmount = 0;
+            }
             settlementReview = "";
             if (persist()) return true;
             settlementReview = "BID_PENDING_ACCEPTED";
@@ -300,6 +311,8 @@ public final class AuctionManager implements Listener {
         String previousReview = settlementReview;
         UUID intentBidder = pendingBidder;
         UUID intentTransactionId = pendingBidTransactionId;
+        UUID previousRefundPlayer = pendingRefundPlayer;
+        double previousRefundAmount = pendingRefundAmount;
         String intentName = pendingBidderName;
         double intentAmount = pendingBidAmount;
         if (paid) {
@@ -309,13 +322,17 @@ public final class AuctionManager implements Listener {
             escrow = intentAmount;
             recordBid(bidderName, currentBid);
             if (previousBidder != null && previousEscrow > 0) {
-                if (!queueRefund(previousBidder, previousEscrow, "outbid-" + intentTransactionId)) {
+                pendingRefundPlayer = previousBidder;
+                pendingRefundAmount = previousEscrow;
+                if (!queueRefund(pendingRefundPlayer, pendingRefundAmount, "outbid-" + intentTransactionId)) {
                     bidder = previousBidder;
                     bidderName = previousBidderName;
                     currentBid = previousBid;
                     escrow = previousEscrow;
                     return false;
                 }
+                pendingRefundPlayer = null;
+                pendingRefundAmount = 0;
             }
         }
         settlementReview = "";
@@ -334,6 +351,8 @@ public final class AuctionManager implements Listener {
         pendingBidderName = intentName;
         pendingBidAmount = intentAmount;
         pendingBidTransactionId = intentTransactionId;
+        pendingRefundPlayer = previousRefundPlayer;
+        pendingRefundAmount = previousRefundAmount;
         return false;
     }
 
@@ -578,6 +597,8 @@ public final class AuctionManager implements Listener {
         pendingBidderName = yaml.getString("pendingBidderName", "");
         pendingBidAmount = yaml.getDouble("pendingBidAmount", 0.0);
         pendingBidTransactionId = parseUuid(yaml.getString("pendingBidTransactionId"));
+        pendingRefundPlayer = parseUuid(yaml.getString("pendingRefundPlayer"));
+        pendingRefundAmount = yaml.getDouble("pendingRefundAmount", 0.0);
         auctionId = parseUuid(yaml.getString("auctionId"));
         if (auctionId == null) auctionId = UUID.randomUUID();
         active = item != null && seller != null;
@@ -608,6 +629,8 @@ public final class AuctionManager implements Listener {
         yaml.set("pendingBidderName", pendingBidderName);
         yaml.set("pendingBidAmount", pendingBidAmount);
         yaml.set("pendingBidTransactionId", pendingBidTransactionId == null ? null : pendingBidTransactionId.toString());
+        yaml.set("pendingRefundPlayer", pendingRefundPlayer == null ? null : pendingRefundPlayer.toString());
+        yaml.set("pendingRefundAmount", pendingRefundAmount);
         yaml.set("auctionId", auctionId == null ? null : auctionId.toString());
         yaml.set("item", item);
         yaml.set("seller", seller == null ? null : seller.toString());
