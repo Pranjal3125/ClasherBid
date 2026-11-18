@@ -121,6 +121,11 @@ public final class AuctionManager implements Listener {
             Bukkit.broadcastMessage("§6§lCLASHERBID §eAuction start reconciled; auction is active.");
             return true;
         }
+        ItemStack oldItem = item;
+        UUID oldSeller = seller, oldBidder = bidder;
+        String oldBidderName = bidderName;
+        double oldCurrentBid = currentBid, oldEscrow = escrow;
+        long oldEndsAt = endsAt;
         active = false;
         item = null;
         seller = null;
@@ -132,6 +137,13 @@ public final class AuctionManager implements Listener {
         settlementReview = "";
         if (!persist()) {
             active = true;
+            item = oldItem;
+            seller = oldSeller;
+            bidder = oldBidder;
+            bidderName = oldBidderName;
+            currentBid = oldCurrentBid;
+            escrow = oldEscrow;
+            endsAt = oldEndsAt;
             settlementReview = "START_PENDING";
             return false;
         }
@@ -555,10 +567,16 @@ public final class AuctionManager implements Listener {
 
     public boolean resolveClaimReview(UUID playerId, boolean delivered) {
         String reviewPath = "recovery.claim-review." + playerId;
-        if (claimReview(playerId).isEmpty()) return false;
-        if (delivered) plugin.getConfig().set("pending-delivery." + playerId, null);
+        String deliveryPath = "pending-delivery." + playerId;
+        String previousReview = plugin.getConfig().getString(reviewPath, "");
+        Object previousDelivery = plugin.getConfig().get(deliveryPath);
+        if (previousReview.isEmpty()) return false;
+        if (delivered) plugin.getConfig().set(deliveryPath, null);
         plugin.getConfig().set(reviewPath, null);
-        return persistConfig();
+        if (persistConfig()) return true;
+        plugin.getConfig().set(reviewPath, previousReview);
+        if (delivered) plugin.getConfig().set(deliveryPath, previousDelivery);
+        return false;
     }
 
     public void claim(Player player) {
