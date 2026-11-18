@@ -178,7 +178,13 @@ public final class AuctionManager implements Listener {
 
     public boolean resolveSettlementUnpaid() {
         if (!active || settlementReview.isEmpty() || item == null || seller == null) return false;
-        if (bidder != null && escrow > 0) refund(bidder, escrow);
+        if (bidder != null && escrow > 0) {
+            // Persist an unpaid refund liability instead of depositing immediately.
+            // The guarded recovery command will require review before any payment.
+            String refundPath = "recovery.refund." + bidder;
+            plugin.getConfig().set(refundPath, plugin.getConfig().getDouble(refundPath, 0.0) + escrow);
+            plugin.saveConfig();
+        }
         deliver(seller, item);
         Bukkit.broadcastMessage("§6ClasherBid §eSettlement manually confirmed unpaid by admin. Auction item returned.");
         clear();
