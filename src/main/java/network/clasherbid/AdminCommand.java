@@ -64,6 +64,16 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
             else sender.sendMessage("§cRefund recovery failed or is now frozen for manual review. Do not retry blindly.");
             return true;
         }
+        if (args.length == 3 && args[0].equalsIgnoreCase("start-review")) {
+            if (args[2].equalsIgnoreCase("item-removed")) {
+                if (auctions.resolveStartReview(true)) sender.sendMessage("§aStart review resolved: verified item removed; auction active.");
+                else sender.sendMessage("§cNo start review pending, or save failed.");
+            } else if (args[2].equalsIgnoreCase("item-still-held")) {
+                if (auctions.resolveStartReview(false)) sender.sendMessage("§eStart review resolved: verified item still held; auction cleared.");
+                else sender.sendMessage("§cNo start review pending, or save failed.");
+            } else sender.sendMessage("§cUsage: /clasherbid start-review <item-removed|item-still-held>");
+            return true;
+        }
         if (args.length == 2 && args[0].equalsIgnoreCase("settlement")) {
             if (args[1].equalsIgnoreCase("paid")) {
                 if (auctions.resolveSettlementPaid()) sender.sendMessage("§aConfirmed paid: item delivery finalized. No second payout was made.");
@@ -114,7 +124,8 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
             if (held.getType() == Material.AIR) { sender.sendMessage("§cHold the auction item in your main hand."); return true; }
             if (auctions.start(player, held.clone(), price, minutes * 60L)) {
                 player.getInventory().setItemInMainHand(null);
-                sender.sendMessage("§aAuction started.");
+                if (auctions.completeStart()) sender.sendMessage("§aAuction started.");
+                else sender.sendMessage("§eItem removed and auction start saved, but start is frozen for admin review. Check /clasherbid settlement.");
             } else sender.sendMessage("§cCould not start auction. Is another auction active or are arguments invalid?");
             return true;
         }
@@ -126,6 +137,7 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage("§e/clasherbid claim-review <player> <delivered|undelivered>");
         sender.sendMessage("§e/clasherbid refund-review <player> <paid|unpaid>");
         sender.sendMessage("§e/clasherbid bid-review <paid|unpaid>");
+        sender.sendMessage("§e/clasherbid start-review <item-removed|item-still-held>");
         sender.sendMessage("§e/clasherbid settlement");
         sender.sendMessage("§e/clasherbid settlement <paid|unpaid>");
         return true;
@@ -133,10 +145,11 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
 
     @Override public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (!sender.hasPermission("clasherbid.admin")) return List.of();
-        if (args.length == 1) return List.of("start", "cancel", "status", "history", "recover", "claim-review", "refund-review", "bid-review", "settlement").stream()
+        if (args.length == 1) return List.of("start", "cancel", "status", "history", "recover", "claim-review", "refund-review", "bid-review", "settlement", "start-review").stream()
                 .filter(s -> s.startsWith(args[0].toLowerCase(Locale.ROOT))).collect(Collectors.toList());
         if (args.length == 2 && args[0].equalsIgnoreCase("start")) return List.of("1", "5", "10", "15", "30", "60", "120");
         if (args.length == 2 && args[0].equalsIgnoreCase("settlement")) return List.of("paid", "unpaid");
+        if (args.length == 2 && args[0].equalsIgnoreCase("start-review")) return List.of("item-removed", "item-still-held");
         if (args.length == 2 && args[0].equalsIgnoreCase("bid-review")) return List.of("paid", "unpaid");
         if (args.length == 2 && (args[0].equalsIgnoreCase("recover") || args[0].equalsIgnoreCase("refund-review") || args[0].equalsIgnoreCase("claim-review"))) return plugin.getServer().getOnlinePlayers().stream().map(Player::getName).toList();
         if (args.length == 3 && args[0].equalsIgnoreCase("refund-review")) return List.of("paid", "unpaid");
