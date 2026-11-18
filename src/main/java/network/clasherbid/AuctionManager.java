@@ -239,6 +239,8 @@ public final class AuctionManager implements Listener {
         currentBid = yaml.getDouble("currentBid");
         escrow = yaml.getDouble("escrow");
         endsAt = yaml.getLong("endsAt");
+        bidHistory.clear();
+        bidHistory.addAll(yaml.getStringList("recentBids"));
         active = item != null && seller != null;
         if (active) {
             if (endsAt <= System.currentTimeMillis()) finish();
@@ -266,6 +268,7 @@ public final class AuctionManager implements Listener {
         yaml.set("currentBid", currentBid);
         yaml.set("escrow", escrow);
         yaml.set("endsAt", endsAt);
+        yaml.set("recentBids", new java.util.ArrayList<>(bidHistory));
         try { yaml.save(file); }
         catch (IOException ex) { plugin.getLogger().log(Level.SEVERE, "Could not save active auction", ex); }
     }
