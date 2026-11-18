@@ -221,9 +221,15 @@ public final class AuctionManager implements Listener {
 
     /** Resolve an interrupted bid withdrawal; paid accepts it, unpaid clears the intent. */
     public boolean resolveBidReview(boolean paid) {
-        if (!active || !settlementReview.startsWith("BID_PENDING") || pendingBidder == null || pendingBidAmount <= 0) return false;
-        if (settlementReview.equals("BID_PENDING_ACCEPTED") && !paid) return false;
-        if (paid && settlementReview.equals("BID_PENDING")) {
+        if (!active || !settlementReview.startsWith("BID_PENDING")) return false;
+        // Accepted state was persisted with a review marker: only clear the marker, never reverse it.
+        if (settlementReview.equals("BID_PENDING_ACCEPTED")) {
+            if (!paid) return false;
+            settlementReview = "";
+            return persist();
+        }
+        if (pendingBidder == null || pendingBidAmount <= 0) return false;
+        if (paid) {
             UUID oldBidder = bidder;
             double oldEscrow = escrow;
             bidder = pendingBidder;
