@@ -325,6 +325,8 @@ public final class AuctionManager implements Listener {
         // Accepted state was persisted with a review marker: only clear it after successful save.
         if (settlementReview.equals("BID_PENDING_ACCEPTED")) {
             if (!paid) return false;
+            UUID previousRefundPlayer = pendingRefundPlayer;
+            double previousRefundAmount = pendingRefundAmount;
             if (pendingRefundPlayer != null && pendingRefundAmount > 0) {
                 if (!queueRefund(pendingRefundPlayer, pendingRefundAmount, "outbid-" + pendingBidTransactionId)) return false;
                 pendingRefundPlayer = null;
@@ -332,7 +334,10 @@ public final class AuctionManager implements Listener {
             }
             settlementReview = "";
             if (persist()) return true;
+            // Keep the accepted-bid journal exactly as it was if the auction save fails.
             settlementReview = "BID_PENDING_ACCEPTED";
+            pendingRefundPlayer = previousRefundPlayer;
+            pendingRefundAmount = previousRefundAmount;
             return false;
         }
         if (pendingBidder == null || pendingBidAmount <= 0) return false;
@@ -478,16 +483,6 @@ public final class AuctionManager implements Listener {
         if (configured.isEmpty()) return seller;
         OfflinePlayer account = Bukkit.getOfflinePlayer(configured);
         return account.getUniqueId();
-    }
-
-    private void refund(UUID playerId, double amount) {
-        EconomyResponse response = economy.depositPlayer(Bukkit.getOfflinePlayer(playerId), amount);
-        if (!response.transactionSuccess()) {
-            plugin.getLogger().severe("Refund failed for " + playerId + ": " + response.errorMessage
-                    + ". Escrow remains recorded for manual recovery.");
-            plugin.getConfig().set("recovery.refund." + playerId, plugin.getConfig().getDouble("recovery.refund." + playerId) + amount);
-            plugin.saveConfig();
-        }
     }
 
     public double pendingRefund(UUID playerId) {
