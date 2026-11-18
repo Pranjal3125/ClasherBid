@@ -160,12 +160,17 @@ public final class AuctionManager implements Listener {
         return "§aYour bid of §e" + economy.format(amount) + " §awas accepted. Funds are held until outbid or auction end.";
     }
 
-    public void cancel() {
-        if (!active) return;
-        if (bidder != null) refund(bidder, escrow);
-        deliver(seller, item);
-        clear();
-        Bukkit.broadcastMessage("§6ClasherBid §cAuction cancelled. Item returned and bidder refunded.");
+    public boolean cancel() {
+        if (!active || !settlementReview.isEmpty()) return false;
+        // Cancellation is a transaction too: freeze and persist intent first.
+        // Admin must reconcile the refund/item outcome instead of risking duplicate side effects.
+        settlementReview = "CANCEL_PENDING";
+        if (!persist()) {
+            settlementReview = "";
+            return false;
+        }
+        Bukkit.broadcastMessage("§cClasherBid cancellation frozen for admin reconciliation. Verify balances and item delivery, then use /clasherbid settlement <paid|unpaid>.");
+        return true;
     }
 
     private void schedule() {
