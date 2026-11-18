@@ -10,7 +10,7 @@ commands:
     aliases: [auction]
   clasherbid:
     description: Manage the active auction
-    usage: /clasherbid <start|cancel|status>
+    usage: /clasherbid <start|cancel|status|history|recover|settlement>
     permission: clasherbid.admin
 permissions:
   clasherbid.admin:
