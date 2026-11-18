@@ -17,7 +17,8 @@ GUI-based single-item auction plugin for Clasher Network.
 - `/clasherbid start <minutes> <starting-price>` — start an auction using the item in the admin's main hand (1–120 minutes; positive starting price)
 - `/clasherbid cancel` — cancel and refund
 - `/clasherbid status` — show current auction state
-- `/clasherbid history` — recent auction history\n- `/clasherbid recover <player>` — recover a recorded failed refund (admin only)
+- `/clasherbid history` — recent auction history
+- `/clasherbid recover <player>` — recover a recorded failed refund (admin only)
 - `/clasherbid settlement` — inspect a frozen payout for manual review (admin only)
 - `/clasherbid settlement paid` — admin confirms payout was completed; finalizes winner item delivery
 - `/clasherbid settlement unpaid` — admin confirms no payout occurred; returns item and attempts bidder refund
