@@ -24,8 +24,9 @@ public final class ClasherBidPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(auctions, this);
         getServer().getPluginManager().registerEvents(gui, this);
         getCommand("bid").setExecutor(gui);
-        getCommand("clasherbid").setExecutor(new AdminCommand(this, auctions));
-        getCommand("clasherbid").setTabCompleter(new AdminCommand(this, auctions));
+        AdminCommand adminCommand = new AdminCommand(this, auctions);
+        getCommand("clasherbid").setExecutor(adminCommand);
+        getCommand("clasherbid").setTabCompleter(adminCommand);
         auctions.load();
         getLogger().info("ClasherBid enabled with " + economy.getName());
     }
