@@ -1,0 +1,10 @@
+# All money amounts use the server's Vault economy.
+minimum-increment: 100.0
+bid-cooldown-seconds: 2
+anti-sniping:
+  enabled: true
+  trigger-seconds: 15
+  extend-seconds: 30
+# Set this to a valid online/offline player name if payout should go to a
+# fixed account. Blank means the player who starts that auction receives it.
+payout-player: ""
