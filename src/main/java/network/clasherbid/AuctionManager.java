@@ -124,6 +124,7 @@ public final class AuctionManager implements Listener {
     public void finish() {
         if (!active) return;
         if (bidder == null) {
+            recordHistory("No bids", 0.0);
             deliver(seller, item);
             Bukkit.broadcastMessage("§6ClasherBid §7Auction ended without bids; item returned.");
         } else {
@@ -145,6 +146,7 @@ public final class AuctionManager implements Listener {
                 schedule();
                 return;
             }
+            recordHistory(bidderName, currentBid);
             deliver(bidder, item);
             Bukkit.broadcastMessage("§6§lAUCTION ENDED §e" + bidderName + " §7won §f"
                     + item.getType() + " §7for §a" + economy.format(currentBid) + "§7!");
@@ -229,6 +231,12 @@ public final class AuctionManager implements Listener {
     }
 
     public void load() {
+        if (historyFile.exists()) {
+            YamlConfiguration savedHistory = YamlConfiguration.loadConfiguration(historyFile);
+            history.clear();
+            history.addAll(savedHistory.getStringList("entries"));
+            while (history.size() > 25) history.remove(history.size() - 1);
+        }
         if (!file.exists()) return;
         YamlConfiguration yaml = YamlConfiguration.loadConfiguration(file);
         if (!yaml.getBoolean("active")) return;
