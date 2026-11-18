@@ -24,6 +24,15 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
             else sender.sendMessage("§cRefund recovery failed. The pending amount remains saved.");
             return true;
         }
+        if (args.length == 1 && args[0].equalsIgnoreCase("settlement")) {
+            if (auctions.settlementReview().isEmpty()) sender.sendMessage("§aNo settlement is frozen for review.");
+            else sender.sendMessage("§cSettlement review required: §e" + auctions.settlementReview()
+                    + " §7| Auction: §f" + (auctions.auctionItem() == null ? "unknown" : auctions.auctionItem().getType())
+                    + " §7| Winner: §e" + auctions.highestBidderName()
+                    + " §7| Amount: §a" + plugin.economy().format(auctions.currentBid())
+                    + " §7— verify balances and item delivery before any manual action.");
+            return true;
+        }
         if (args.length == 1 && args[0].equalsIgnoreCase("cancel")) {
             if (!auctions.isActive()) sender.sendMessage("§cNo active auction.");
             else { auctions.cancel(); sender.sendMessage("§aAuction cancelled."); }
@@ -61,7 +70,7 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage("§e/clasherbid cancel");
         sender.sendMessage("§e/clasherbid status");
         sender.sendMessage("§e/clasherbid history");
-        sender.sendMessage("§e/clasherbid recover <player>");
+        sender.sendMessage("§e/clasherbid recover <player>");\n        sender.sendMessage("§e/clasherbid settlement");
         return true;
     }
 
