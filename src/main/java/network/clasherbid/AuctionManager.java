@@ -381,14 +381,37 @@ public final class AuctionManager implements Listener {
         }
     }
 
+    public String claimReview(UUID playerId) {
+        return plugin.getConfig().getString("recovery.claim-review." + playerId, "");
+    }
+
+    public boolean resolveClaimReview(UUID playerId, boolean delivered) {
+        String reviewPath = "recovery.claim-review." + playerId;
+        if (claimReview(playerId).isEmpty()) return false;
+        if (delivered) plugin.getConfig().set("pending-delivery." + playerId, null);
+        plugin.getConfig().set(reviewPath, null);
+        plugin.saveConfig();
+        return true;
+    }
+
     public void claim(Player player) {
         String path = "pending-delivery." + player.getUniqueId();
+        String reviewPath = "recovery.claim-review." + player.getUniqueId();
+        if (!claimReview(player.getUniqueId()).isEmpty()) {
+            player.sendMessage("§cPending delivery is frozen for admin review. Contact an admin before retrying.");
+            return;
+        }
         java.util.List<?> raw = plugin.getConfig().getList(path);
         java.util.List<ItemStack> pending = new java.util.ArrayList<>();
         if (raw != null) for (Object value : raw) if (value instanceof ItemStack stack) pending.add(stack.clone());
         ItemStack legacy = plugin.getConfig().getItemStack(path);
         if (pending.isEmpty() && legacy != null) pending.add(legacy);
         if (pending.isEmpty()) return;
+
+        // Persist a claim intent before inventory changes. A crash in the delivery
+        // window freezes this claim for manual reconciliation instead of blind retry.
+        plugin.getConfig().set(reviewPath, "CLAIM_PENDING");
+        plugin.saveConfig();
 
         java.util.List<ItemStack> remaining = new java.util.ArrayList<>();
         int delivered = 0;
@@ -399,6 +422,7 @@ public final class AuctionManager implements Listener {
             else remaining.addAll(overflow.values());
         }
         plugin.getConfig().set(path, remaining.isEmpty() ? null : remaining);
+        plugin.getConfig().set(reviewPath, null);
         plugin.saveConfig();
         if (delivered > 0) player.sendMessage("§aDelivered " + delivered + " pending auction item(s).");
         if (!remaining.isEmpty()) player.sendMessage("§eInventory full. Remaining items will be kept for later.");
