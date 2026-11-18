@@ -71,7 +71,8 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage("§e/clasherbid cancel");
         sender.sendMessage("§e/clasherbid status");
         sender.sendMessage("§e/clasherbid history");
-        sender.sendMessage("§e/clasherbid recover <player>");\n        sender.sendMessage("§e/clasherbid settlement");
+        sender.sendMessage("§e/clasherbid recover <player>");
+        sender.sendMessage("§e/clasherbid settlement");
         return true;
     }
 
