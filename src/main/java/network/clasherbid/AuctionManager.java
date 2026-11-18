@@ -46,7 +46,7 @@ public final class AuctionManager implements Listener {
     public UUID highestBidder() { return bidder; }
     public String highestBidderName() { return bidderName; }
     public long secondsLeft() { return active ? Math.max(0, (endsAt - System.currentTimeMillis() + 999) / 1000) : 0; }
-    public double nextMinimum() { return active ? currentBid + plugin.getConfig().getDouble("minimum-increment", 100.0) : 0; }
+    public double nextMinimum() { return active ? currentBid + plugin.getConfig().getDouble("minimum-increment", 100.0) : 0; }\n    private final java.util.ArrayDeque<String> bidHistory = new java.util.ArrayDeque<>();\n    public java.util.List<String> recentBids() { return java.util.List.copyOf(bidHistory); }\n    private void recordBid(String name, double amount) { bidHistory.addFirst(name + " : " + economy.format(amount)); while (bidHistory.size() > 8) bidHistory.removeLast(); }
 
     public boolean start(Player admin, ItemStack stack, double openingBid, long durationSeconds) {
         if (active || stack == null || stack.getType().isAir() || durationSeconds < 30
@@ -85,7 +85,7 @@ public final class AuctionManager implements Listener {
         bidderName = player.getName();
         currentBid = amount;
         escrow = amount;
-        lastBidAt = System.currentTimeMillis();
+        lastBidAt = System.currentTimeMillis();\n        recordBid(bidderName, amount);
 
         if (previousBidder != null) refund(previousBidder, previousEscrow);
         if (plugin.getConfig().getBoolean("anti-sniping.enabled", true)
