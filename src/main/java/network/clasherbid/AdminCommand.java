@@ -48,6 +48,7 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
             long minutes; double price;
             try { minutes = Long.parseLong(args[1]); price = Double.parseDouble(args[2]); }
             catch (NumberFormatException ex) { sender.sendMessage("§cUsage: /clasherbid start <minutes> <starting-price>"); return true; }
+            if (minutes < 1 || minutes > 120 || !Double.isFinite(price) || price <= 0) { sender.sendMessage("§cDuration must be 1-120 minutes and starting price must be positive."); return true; }
             ItemStack held = player.getInventory().getItemInMainHand();
             if (held.getType() == Material.AIR) { sender.sendMessage("§cHold the auction item in your main hand."); return true; }
             if (auctions.start(player, held.clone(), price, minutes * 60L)) {
@@ -68,7 +69,7 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
         if (!sender.hasPermission("clasherbid.admin")) return List.of();
         if (args.length == 1) return List.of("start", "cancel", "status", "history", "recover").stream()
                 .filter(s -> s.startsWith(args[0].toLowerCase(Locale.ROOT))).collect(Collectors.toList());
-        if (args.length == 2 && args[0].equalsIgnoreCase("start")) return List.of("5", "10", "15", "30");
+        if (args.length == 2 && args[0].equalsIgnoreCase("start")) return List.of("1", "5", "10", "15", "30", "60", "120");
         if (args.length == 2 && args[0].equalsIgnoreCase("recover")) return plugin.getServer().getOnlinePlayers().stream().map(Player::getName).toList();
         if (args.length == 3 && args[0].equalsIgnoreCase("start")) return List.of("100", "500", "1000", "5000");
         return List.of();
