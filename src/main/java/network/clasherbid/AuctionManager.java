@@ -362,7 +362,7 @@ public final class AuctionManager implements Listener {
     public boolean resolveSettlementPaid() {
         if (!active || settlementReview.isEmpty() || settlementReview.startsWith("BID_PENDING") || settlementReview.equals("CANCEL_PENDING") || bidder == null || item == null) return false;
         if (!queueDelivery(bidder, item, "auction-" + auctionTransactionId() + "-winner")) return false;
-        recordHistory(bidderName, currentBid);
+        recordHistory(bidderName, currentBid, auctionTransactionId());
         Bukkit.broadcastMessage("§6ClasherBid §eSettlement manually confirmed paid by admin. Winner item queued for claim.");
         return clear();
     }
