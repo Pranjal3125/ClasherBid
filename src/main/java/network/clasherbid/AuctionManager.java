@@ -37,6 +37,9 @@ public final class AuctionManager implements Listener {
     private long lastBidAt;
     private boolean active;
     private String settlementReview = "";
+    private UUID pendingBidder;
+    private String pendingBidderName = "";
+    private double pendingBidAmount;
     private BukkitTask timer;
 
     AuctionManager(ClasherBidPlugin plugin, Economy economy) {
@@ -98,25 +101,59 @@ public final class AuctionManager implements Listener {
         if (!Double.isFinite(amount) || amount < nextMinimum())
             return "§cMinimum next bid: §e" + economy.format(nextMinimum());
 
-        // Withdraw the full new bid first. The previous escrow is refunded only
-        // after the new withdrawal succeeds, avoiding an unbacked high bid.
+        // Durable intent before Vault withdrawal: an uncertain crash is frozen for admin review.
+        pendingBidder = player.getUniqueId();
+        pendingBidderName = player.getName();
+        pendingBidAmount = amount;
+        settlementReview = "BID_PENDING";
+        if (!persist()) {
+            settlementReview = "";
+            pendingBidder = null;
+            pendingBidderName = "";
+            pendingBidAmount = 0;
+            persist();
+            return "§cBid paused: auction state could not be saved.";
+        }
         EconomyResponse withdrawal = economy.withdrawPlayer(player, amount);
-        if (!withdrawal.transactionSuccess()) return "§cBid failed: " + withdrawal.errorMessage;
+        if (!withdrawal.transactionSuccess()) {
+            settlementReview = "";
+            pendingBidder = null;
+            pendingBidderName = "";
+            pendingBidAmount = 0;
+            persist();
+            return "§cBid failed: " + withdrawal.errorMessage;
+        }
 
         UUID previousBidder = bidder;
         double previousEscrow = escrow;
-        bidder = player.getUniqueId();
-        bidderName = player.getName();
-        currentBid = amount;
-        escrow = amount;
+        bidder = pendingBidder;
+        bidderName = pendingBidderName;
+        currentBid = pendingBidAmount;
+        escrow = pendingBidAmount;
+        pendingBidder = null;
+        pendingBidderName = "";
+        pendingBidAmount = 0;
+        settlementReview = "BID_PENDING_ACCEPTED";
         lastBidAt = System.currentTimeMillis();
         recordBid(bidderName, amount);
-
-        if (previousBidder != null) refund(previousBidder, previousEscrow);
+        if (previousBidder != null && previousEscrow > 0) {
+            // Queue the previous escrow as a liability; never deposit during bid replacement.
+            String refundPath = "recovery.refund." + previousBidder;
+            plugin.getConfig().set(refundPath, plugin.getConfig().getDouble(refundPath, 0.0) + previousEscrow);
+            plugin.saveConfig();
+        }
         if (plugin.getConfig().getBoolean("anti-sniping.enabled", true)
                 && secondsLeft() <= plugin.getConfig().getLong("anti-sniping.trigger-seconds", 15)) {
             endsAt += plugin.getConfig().getLong("anti-sniping.extend-seconds", 30) * 1000L;
         }
+        if (!persist()) {
+            Bukkit.broadcastMessage("§cClasherBid: bid accepted but persistence is uncertain; auction frozen for admin review.");
+            return "§eBid payment accepted, but auction is frozen for admin review.";
+        }
+        settlementReview = "";
+        pendingBidder = null;
+        pendingBidderName = "";
+        pendingBidAmount = 0;
         persist();
         Bukkit.broadcastMessage("§6§lCLASHERBID §e" + player.getName() + " §7bid §a"
                 + economy.format(amount) + " §7on §f" + item.getType());
@@ -178,8 +215,37 @@ public final class AuctionManager implements Listener {
         clear();
     }
 
+    public String bidReviewInfo() {
+        return settlementReview.startsWith("BID_PENDING") ? settlementReview + " | " + pendingBidderName + " | " + pendingBidAmount : "";
+    }
+
+    /** Resolve an interrupted bid withdrawal; paid accepts it, unpaid clears the intent. */
+    public boolean resolveBidReview(boolean paid) {
+        if (!active || !settlementReview.startsWith("BID_PENDING") || pendingBidder == null || pendingBidAmount <= 0) return false;
+        if (settlementReview.equals("BID_PENDING_ACCEPTED") && !paid) return false;
+        if (paid && settlementReview.equals("BID_PENDING")) {
+            UUID oldBidder = bidder;
+            double oldEscrow = escrow;
+            bidder = pendingBidder;
+            bidderName = pendingBidderName;
+            currentBid = pendingBidAmount;
+            escrow = pendingBidAmount;
+            recordBid(bidderName, currentBid);
+            if (oldBidder != null && oldEscrow > 0) {
+                String path = "recovery.refund." + oldBidder;
+                plugin.getConfig().set(path, plugin.getConfig().getDouble(path, 0.0) + oldEscrow);
+                plugin.saveConfig();
+            }
+        }
+        settlementReview = "";
+        pendingBidder = null;
+        pendingBidderName = "";
+        pendingBidAmount = 0;
+        return persist();
+    }
+
     public boolean resolveSettlementPaid() {
-        if (!active || settlementReview.isEmpty() || bidder == null || item == null) return false;
+        if (!active || settlementReview.isEmpty() || settlementReview.startsWith("BID_PENDING") || bidder == null || item == null) return false;
         recordHistory(bidderName, currentBid);
         deliver(bidder, item);
         Bukkit.broadcastMessage("§6ClasherBid §eSettlement manually confirmed paid by admin. Winner item delivery completed.");
@@ -188,7 +254,7 @@ public final class AuctionManager implements Listener {
     }
 
     public boolean resolveSettlementUnpaid() {
-        if (!active || settlementReview.isEmpty() || item == null || seller == null) return false;
+        if (!active || settlementReview.isEmpty() || settlementReview.startsWith("BID_PENDING") || item == null || seller == null) return false;
         if (bidder != null && escrow > 0) {
             // Persist an unpaid refund liability instead of depositing immediately.
             // The guarded recovery command will require review before any payment.
@@ -340,6 +406,9 @@ public final class AuctionManager implements Listener {
         bidHistory.clear();
         bidHistory.addAll(yaml.getStringList("recentBids"));
         settlementReview = yaml.getString("settlementReview", "");
+        pendingBidder = parseUuid(yaml.getString("pendingBidder"));
+        pendingBidderName = yaml.getString("pendingBidderName", "");
+        pendingBidAmount = yaml.getDouble("pendingBidAmount", 0.0);
         active = item != null && seller != null;
         if (active) {
             if (!settlementReview.isEmpty()) {
@@ -364,6 +433,9 @@ public final class AuctionManager implements Listener {
         YamlConfiguration yaml = new YamlConfiguration();
         yaml.set("active", active);
         yaml.set("settlementReview", settlementReview);
+        yaml.set("pendingBidder", pendingBidder == null ? null : pendingBidder.toString());
+        yaml.set("pendingBidderName", pendingBidderName);
+        yaml.set("pendingBidAmount", pendingBidAmount);
         yaml.set("item", item);
         yaml.set("seller", seller == null ? null : seller.toString());
         yaml.set("bidder", bidder == null ? null : bidder.toString());
