@@ -28,6 +28,19 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
             } else sender.sendMessage("§cUsage: /clasherbid bid-review <paid|unpaid>");
             return true;
         }
+        if (args.length == 3 && args[0].equalsIgnoreCase("claim-review")) {
+            org.bukkit.OfflinePlayer target = plugin.getServer().getOfflinePlayer(args[1]);
+            if (args[2].equalsIgnoreCase("delivered")) {
+                if (auctions.resolveClaimReview(target.getUniqueId(), true))
+                    sender.sendMessage("§aClaim marked delivered; pending item record cleared after inventory verification.");
+                else sender.sendMessage("§cNo claim review marker exists for that player.");
+            } else if (args[2].equalsIgnoreCase("undelivered")) {
+                if (auctions.resolveClaimReview(target.getUniqueId(), false))
+                    sender.sendMessage("§eClaim marked undelivered; claim retry is unlocked after inventory verification.");
+                else sender.sendMessage("§cNo claim review marker exists for that player.");
+            } else sender.sendMessage("§cUsage: /clasherbid claim-review <player> <delivered|undelivered>");
+            return true;
+        }
         if (args.length == 3 && args[0].equalsIgnoreCase("refund-review")) {
             org.bukkit.OfflinePlayer target = plugin.getServer().getOfflinePlayer(args[1]);
             if (args[2].equalsIgnoreCase("paid")) {
@@ -109,6 +122,7 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage("§e/clasherbid status");
         sender.sendMessage("§e/clasherbid history");
         sender.sendMessage("§e/clasherbid recover <player>");
+        sender.sendMessage("§e/clasherbid claim-review <player> <delivered|undelivered>");
         sender.sendMessage("§e/clasherbid refund-review <player> <paid|unpaid>");
         sender.sendMessage("§e/clasherbid bid-review <paid|unpaid>");
         sender.sendMessage("§e/clasherbid settlement");
@@ -118,13 +132,14 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
 
     @Override public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (!sender.hasPermission("clasherbid.admin")) return List.of();
-        if (args.length == 1) return List.of("start", "cancel", "status", "history", "recover", "refund-review", "bid-review", "settlement").stream()
+        if (args.length == 1) return List.of("start", "cancel", "status", "history", "recover", "claim-review", "refund-review", "bid-review", "settlement").stream()
                 .filter(s -> s.startsWith(args[0].toLowerCase(Locale.ROOT))).collect(Collectors.toList());
         if (args.length == 2 && args[0].equalsIgnoreCase("start")) return List.of("1", "5", "10", "15", "30", "60", "120");
         if (args.length == 2 && args[0].equalsIgnoreCase("settlement")) return List.of("paid", "unpaid");
         if (args.length == 2 && args[0].equalsIgnoreCase("bid-review")) return List.of("paid", "unpaid");
-        if (args.length == 2 && (args[0].equalsIgnoreCase("recover") || args[0].equalsIgnoreCase("refund-review"))) return plugin.getServer().getOnlinePlayers().stream().map(Player::getName).toList();
+        if (args.length == 2 && (args[0].equalsIgnoreCase("recover") || args[0].equalsIgnoreCase("refund-review") || args[0].equalsIgnoreCase("claim-review"))) return plugin.getServer().getOnlinePlayers().stream().map(Player::getName).toList();
         if (args.length == 3 && args[0].equalsIgnoreCase("refund-review")) return List.of("paid", "unpaid");
+        if (args.length == 3 && args[0].equalsIgnoreCase("claim-review")) return List.of("delivered", "undelivered");
         if (args.length == 3 && args[0].equalsIgnoreCase("start")) return List.of("100", "500", "1000", "5000");
         return List.of();
     }
