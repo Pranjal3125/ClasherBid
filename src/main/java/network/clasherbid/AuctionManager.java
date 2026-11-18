@@ -237,9 +237,11 @@ public final class AuctionManager implements Listener {
     public void finish() {
         if (!active || !settlementReview.isEmpty()) return;
         if (bidder == null) {
+            settlementReview = "DELIVERY_PENDING";
+            if (!persist()) { settlementReview = ""; return; }
+            if (!queueDelivery(seller, item, "auction-" + auctionTransactionId() + "-seller-return")) return;
             recordHistory("No bids", 0.0);
-            deliver(seller, item);
-            Bukkit.broadcastMessage("§6ClasherBid §7Auction ended without bids; item returned.");
+            Bukkit.broadcastMessage("§6ClasherBid §7Auction ended without bids; item queued for claim.");
         } else {
             UUID payee = payoutAccount();
             if (payee == null) {
@@ -274,11 +276,11 @@ public final class AuctionManager implements Listener {
                 return;
             }
             settlementReview = "PAYOUT_COMPLETED";
-            persist();
+            if (!persist()) return;
+            if (!queueDelivery(bidder, item, "auction-" + auctionTransactionId() + "-winner")) return;
             recordHistory(bidderName, currentBid);
-            deliver(bidder, item);
             Bukkit.broadcastMessage("§6§lAUCTION ENDED §e" + bidderName + " §7won §f"
-                    + item.getType() + " §7for §a" + economy.format(currentBid) + "§7!");
+                    + item.getType() + " §7for §a" + economy.format(currentBid) + "§7! Item queued for claim.");
         }
         clear();
     }
@@ -358,11 +360,10 @@ public final class AuctionManager implements Listener {
 
     public boolean resolveSettlementPaid() {
         if (!active || settlementReview.isEmpty() || settlementReview.startsWith("BID_PENDING") || settlementReview.equals("CANCEL_PENDING") || bidder == null || item == null) return false;
+        if (!queueDelivery(bidder, item, "auction-" + auctionTransactionId() + "-winner")) return false;
         recordHistory(bidderName, currentBid);
-        deliver(bidder, item);
-        Bukkit.broadcastMessage("§6ClasherBid §eSettlement manually confirmed paid by admin. Winner item delivery completed.");
-        clear();
-        return true;
+        Bukkit.broadcastMessage("§6ClasherBid §eSettlement manually confirmed paid by admin. Winner item queued for claim.");
+        return clear();
     }
 
     public boolean resolveSettlementUnpaid() {
@@ -375,10 +376,9 @@ public final class AuctionManager implements Listener {
                 return false;
             }
         }
-        deliver(seller, item);
-        Bukkit.broadcastMessage("§6ClasherBid §eSettlement manually confirmed unpaid by admin. Auction item returned.");
-        clear();
-        return true;
+        if (!queueDelivery(seller, item, "auction-" + auctionTransactionId() + "-seller-return")) return false;
+        Bukkit.broadcastMessage("§6ClasherBid §eSettlement manually confirmed unpaid by admin. Auction item queued for claim.");
+        return clear();
     }
 
     private UUID auctionId;
@@ -462,24 +462,25 @@ public final class AuctionManager implements Listener {
         return persistConfig();
     }
 
-    private void deliver(UUID playerId, ItemStack stack) {
-        if (playerId == null || stack == null) return;
-        Player online = Bukkit.getPlayer(playerId);
-        if (online != null && online.isOnline()) {
-            java.util.Map<Integer, ItemStack> overflow = online.getInventory().addItem(stack.clone());
-            overflow.values().forEach(leftover ->
-                    online.getWorld().dropItemNaturally(online.getLocation(), leftover.clone()));
-        } else {
-            String path = "pending-delivery." + playerId;
-            java.util.List<?> raw = plugin.getConfig().getList(path);
-            java.util.List<ItemStack> pending = new java.util.ArrayList<>();
-            if (raw != null) for (Object value : raw) if (value instanceof ItemStack oldStack) pending.add(oldStack.clone());
-            ItemStack legacy = plugin.getConfig().getItemStack(path);
-            if (pending.isEmpty() && legacy != null) pending.add(legacy);
-            pending.add(stack.clone());
-            plugin.getConfig().set(path, pending);
-            plugin.saveConfig();
-        }
+    /** Durable, idempotent delivery queue; actual inventory changes happen only in /claim. */
+    private boolean queueDelivery(UUID playerId, ItemStack stack, String transactionId) {
+        if (playerId == null || stack == null || stack.getType().isAir() || transactionId == null) return false;
+        String tx = "recovery.delivery-transactions." + transactionId;
+        if (plugin.getConfig().contains(tx)) return true;
+        String path = "pending-delivery." + playerId;
+        java.util.List<?> raw = plugin.getConfig().getList(path);
+        java.util.List<ItemStack> pending = new java.util.ArrayList<>();
+        if (raw != null) for (Object value : raw) if (value instanceof ItemStack old) pending.add(old.clone());
+        ItemStack legacy = plugin.getConfig().getItemStack(path);
+        if (pending.isEmpty() && legacy != null) pending.add(legacy.clone());
+        pending.add(stack.clone());
+        plugin.getConfig().set(path, pending);
+        plugin.getConfig().set(tx + ".player", playerId.toString());
+        plugin.getConfig().set(tx + ".item", stack.clone());
+        if (persistConfig()) return true;
+        plugin.getConfig().set(path, raw);
+        plugin.getConfig().set(tx, null);
+        return false;
     }
 
     public String claimReview(UUID playerId) {
@@ -491,8 +492,7 @@ public final class AuctionManager implements Listener {
         if (claimReview(playerId).isEmpty()) return false;
         if (delivered) plugin.getConfig().set("pending-delivery." + playerId, null);
         plugin.getConfig().set(reviewPath, null);
-        plugin.saveConfig();
-        return true;
+        return persistConfig();
     }
 
     public void claim(Player player) {
@@ -558,19 +558,24 @@ public final class AuctionManager implements Listener {
         }
     }
 
-    private void clear() {
+    private boolean clear() {
+        ItemStack oldItem = item;
+        UUID oldSeller = seller, oldBidder = bidder;
+        String oldName = bidderName, oldReview = settlementReview;
+        double oldBid = currentBid, oldEscrow = escrow;
+        long oldEndsAt = endsAt;
+        active = false; item = null; seller = null; bidder = null;
+        bidderName = ""; currentBid = 0; escrow = 0; endsAt = 0; settlementReview = "";
+        if (!persist()) {
+            active = true; item = oldItem; seller = oldSeller; bidder = oldBidder;
+            bidderName = oldName; currentBid = oldBid; escrow = oldEscrow; endsAt = oldEndsAt;
+            settlementReview = "DELIVERY_PENDING";
+            plugin.getLogger().severe("Delivery queued but auction clear failed; auction frozen for admin review.");
+            return false;
+        }
         if (timer != null) timer.cancel();
         timer = null;
-        active = false;
-        item = null;
-        seller = null;
-        bidder = null;
-        bidderName = "";
-        currentBid = 0;
-        escrow = 0;
-        endsAt = 0;
-        settlementReview = "";
-        persist();
+        return true;
     }
 
     public void load() {
