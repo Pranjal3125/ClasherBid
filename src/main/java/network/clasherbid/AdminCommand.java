@@ -108,8 +108,9 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
         if (args.length == 1) return List.of("start", "cancel", "status", "history", "recover", "refund-review", "settlement").stream()
                 .filter(s -> s.startsWith(args[0].toLowerCase(Locale.ROOT))).collect(Collectors.toList());
         if (args.length == 2 && args[0].equalsIgnoreCase("start")) return List.of("1", "5", "10", "15", "30", "60", "120");
-        if (args.length == 2 && (args[0].equalsIgnoreCase("settlement") || args[0].equalsIgnoreCase("refund-review"))) return List.of("paid", "unpaid");
-        if (args.length == 2 && args[0].equalsIgnoreCase("recover")) return plugin.getServer().getOnlinePlayers().stream().map(Player::getName).toList();
+        if (args.length == 2 && args[0].equalsIgnoreCase("settlement")) return List.of("paid", "unpaid");
+        if (args.length == 2 && (args[0].equalsIgnoreCase("recover") || args[0].equalsIgnoreCase("refund-review"))) return plugin.getServer().getOnlinePlayers().stream().map(Player::getName).toList();
+        if (args.length == 3 && args[0].equalsIgnoreCase("refund-review")) return List.of("paid", "unpaid");
         if (args.length == 3 && args[0].equalsIgnoreCase("start")) return List.of("100", "500", "1000", "5000");
         return List.of();
     }
