@@ -71,7 +71,18 @@ public final class AuctionManager implements Listener {
         endsAt = System.currentTimeMillis() + durationSeconds * 1000L;
         settlementReview = "";
         active = true;
-        persist();
+        if (!persist()) {
+            active = false;
+            item = null;
+            seller = null;
+            bidder = null;
+            bidderName = "";
+            currentBid = 0;
+            escrow = 0;
+            endsAt = 0;
+            settlementReview = "";
+            return false;
+        }
         schedule();
         Bukkit.broadcastMessage("§6§lCLASHERBID §eAuction started: §f" + item.getType()
                 + " §7| Opening bid: §a" + economy.format(openingBid) + " §7| §e/bid");
@@ -348,7 +359,7 @@ public final class AuctionManager implements Listener {
         persist();
     }
 
-    private void persist() {
+    private boolean persist() {
         YamlConfiguration yaml = new YamlConfiguration();
         yaml.set("active", active);
         yaml.set("settlementReview", settlementReview);
@@ -370,7 +381,9 @@ public final class AuctionManager implements Listener {
             } catch (IOException fallbackFailure) {
                 fallbackFailure.addSuppressed(atomicFailure);
                 plugin.getLogger().log(Level.SEVERE, "Could not safely persist active auction. The previous file may remain intact.", fallbackFailure);
+                return false;
             }
         }
+        return true;
     }
 }
