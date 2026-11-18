@@ -93,7 +93,21 @@ public final class AuctionGui implements Listener, CommandExecutor {
     private void refreshOpenAuctions() {
         for (Player player : Bukkit.getOnlinePlayers()) {
             if (TITLE.equals(player.getOpenInventory().getTitle()) && auctions.isActive()) {
-                player.getOpenInventory().getTopInventory().setItem(13, auctionDisplay());
+                Inventory top = player.getOpenInventory().getTopInventory();
+                top.setItem(13, auctionDisplay());
+                double balance = plugin.economy().getBalance(player);
+                top.setItem(10, button(Material.EMERALD, "§aBid minimum",
+                        List.of("§7Amount: §e" + plugin.economy().format(auctions.nextMinimum()),
+                                "§7Balance: §e" + plugin.economy().format(balance)), "minimum"));
+                top.setItem(11, button(Material.GOLD_INGOT, "§6Bid +$500",
+                        List.of("§7Amount: §e" + plugin.economy().format(auctions.currentBid() + 500),
+                                "§7Balance: §e" + plugin.economy().format(balance)), "plus500"));
+                top.setItem(12, button(Material.DIAMOND, "§bBid +$1,000",
+                        List.of("§7Amount: §e" + plugin.economy().format(auctions.currentBid() + 1000),
+                                "§7Balance: §e" + plugin.economy().format(balance)), "plus1000"));
+                top.setItem(14, button(Material.EMERALD_BLOCK, "§aBid +$5,000",
+                        List.of("§7Amount: §e" + plugin.economy().format(auctions.currentBid() + 5000),
+                                "§7Balance: §e" + plugin.economy().format(balance)), "plus5000"));
             }
         }
     }
