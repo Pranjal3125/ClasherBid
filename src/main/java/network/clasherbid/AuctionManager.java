@@ -181,7 +181,10 @@ public final class AuctionManager implements Listener {
             // Queue the previous escrow as a liability; never deposit during bid replacement.
             String refundPath = "recovery.refund." + previousBidder;
             plugin.getConfig().set(refundPath, plugin.getConfig().getDouble(refundPath, 0.0) + previousEscrow);
-            plugin.saveConfig();
+            if (!persistConfig()) {
+                Bukkit.broadcastMessage("§cClasherBid: previous bidder refund could not be saved; auction frozen for admin review.");
+                return "§eBid received, but refund accounting could not be saved. Auction frozen for admin review.";
+            }
         }
         if (plugin.getConfig().getBoolean("anti-sniping.enabled", true)
                 && secondsLeft() <= plugin.getConfig().getLong("anti-sniping.trigger-seconds", 15)) {
@@ -303,7 +306,13 @@ public final class AuctionManager implements Listener {
             if (previousBidder != null && previousEscrow > 0) {
                 String path = "recovery.refund." + previousBidder;
                 plugin.getConfig().set(path, plugin.getConfig().getDouble(path, 0.0) + previousEscrow);
-                plugin.saveConfig();
+                if (!persistConfig()) {
+                    bidder = previousBidder;
+                    bidderName = previousBidderName;
+                    currentBid = previousBid;
+                    escrow = previousEscrow;
+                    return false;
+                }
             }
         }
         settlementReview = "";
@@ -339,7 +348,10 @@ public final class AuctionManager implements Listener {
             // The guarded recovery command will require review before any payment.
             String refundPath = "recovery.refund." + bidder;
             plugin.getConfig().set(refundPath, plugin.getConfig().getDouble(refundPath, 0.0) + escrow);
-            plugin.saveConfig();
+            if (!persistConfig()) {
+                plugin.getLogger().severe("Could not persist bidder refund liability; settlement remains frozen and item was not returned.");
+                return false;
+            }
         }
         deliver(seller, item);
         Bukkit.broadcastMessage("§6ClasherBid §eSettlement manually confirmed unpaid by admin. Auction item returned.");
@@ -389,13 +401,12 @@ public final class AuctionManager implements Listener {
         double amount = pendingRefund(playerId);
         if (!Double.isFinite(amount) || amount <= 0 || !refundReview(playerId).isEmpty()) return false;
         plugin.getConfig().set("recovery.refund-review." + playerId, "REFUND_PENDING");
-        plugin.saveConfig();
+        if (!persistConfig()) return false;
         EconomyResponse response = economy.depositPlayer(Bukkit.getOfflinePlayer(playerId), amount);
         if (!response.transactionSuccess()) return false; // keep marker for manual review
         plugin.getConfig().set("recovery.refund." + playerId, null);
         plugin.getConfig().set("recovery.refund-review." + playerId, null);
-        plugin.saveConfig();
-        return true;
+        return persistConfig();
     }
 
     /** paid=true clears the debt; paid=false authorizes a later retry after balance verification. */
@@ -403,8 +414,7 @@ public final class AuctionManager implements Listener {
         if (refundReview(playerId).isEmpty()) return false;
         if (paid) plugin.getConfig().set("recovery.refund." + playerId, null);
         plugin.getConfig().set("recovery.refund-review." + playerId, null);
-        plugin.saveConfig();
-        return true;
+        return persistConfig();
     }
 
     private void deliver(UUID playerId, ItemStack stack) {
@@ -457,7 +467,10 @@ public final class AuctionManager implements Listener {
         // Persist a claim intent before inventory changes. A crash in the delivery
         // window freezes this claim for manual reconciliation instead of blind retry.
         plugin.getConfig().set(reviewPath, "CLAIM_PENDING");
-        plugin.saveConfig();
+        if (!persistConfig()) {
+            player.sendMessage("§cCould not save claim review marker. No items were delivered; contact an admin.");
+            return;
+        }
 
         java.util.List<ItemStack> remaining = new java.util.ArrayList<>();
         int delivered = 0;
@@ -469,9 +482,35 @@ public final class AuctionManager implements Listener {
         }
         plugin.getConfig().set(path, remaining.isEmpty() ? null : remaining);
         plugin.getConfig().set(reviewPath, null);
-        plugin.saveConfig();
+        if (!persistConfig()) {
+            player.sendMessage("§eDelivery was attempted but its final state could not be saved. Claim is frozen for admin review; do not retry.");
+            return;
+        }
         if (delivered > 0) player.sendMessage("§aDelivered " + delivered + " pending auction item(s).");
         if (!remaining.isEmpty()) player.sendMessage("§eInventory full. Remaining items will be kept for later.");
+    }
+
+    /** Writes recovery/config state to a temporary file and replaces config.yml only after a successful save. */
+    private boolean persistConfig() {
+        File target = new File(plugin.getDataFolder(), "config.yml");
+        File temp = new File(plugin.getDataFolder(), "config.yml.tmp");
+        try {
+            plugin.getConfig().save(temp);
+            try {
+                Files.move(temp.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            } catch (IOException atomicFailure) {
+                try {
+                    Files.move(temp.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                } catch (IOException fallbackFailure) {
+                    fallbackFailure.addSuppressed(atomicFailure);
+                    throw fallbackFailure;
+                }
+            }
+            return true;
+        } catch (IOException ex) {
+            plugin.getLogger().log(Level.SEVERE, "Could not safely persist recovery/config state. Related transaction remains frozen.", ex);
+            return false;
+        }
     }
 
     private void clear() {
