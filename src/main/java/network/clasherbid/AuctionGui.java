@@ -33,6 +33,7 @@ public final class AuctionGui implements Listener, CommandExecutor {
         this.plugin = plugin;
         this.auctions = auctions;
         this.actionKey = new NamespacedKey(plugin, "gui-action");
+        Bukkit.getScheduler().runTaskTimer(plugin, this::refreshOpenAuctions, 20L, 20L);
     }
 
     @Override
@@ -50,20 +51,7 @@ public final class AuctionGui implements Listener, CommandExecutor {
         if (!auctions.isActive()) {
             gui.setItem(13, button(Material.BARRIER, "§cNo active auction", List.of("§7Check again later."), "none"));
         } else {
-            ItemStack display = auctions.auctionItem();
-            ItemMeta meta = display.getItemMeta();
-            meta.setDisplayName("§6§lAuction Item");
-            List<String> lore = new ArrayList<>(List.of(
-                    "§7Current bid: §a" + plugin.economy().format(auctions.currentBid()),
-                    "§7Minimum next bid: §e" + plugin.economy().format(auctions.nextMinimum()),
-                    "§7Highest bidder: §f" + (auctions.highestBidderName().isEmpty() ? "None" : auctions.highestBidderName()),
-                    "§7Time remaining: §e" + auctions.secondsLeft() + "s", "",
-                    "§aChoose a bid amount below.", "", "§6Recent bids:"));
-            if (auctions.recentBids().isEmpty()) lore.add("§7No bids yet");
-            else auctions.recentBids().stream().limit(5).forEach(b -> lore.add("§7" + b));
-            meta.setLore(lore);
-            display.setItemMeta(meta);
-            gui.setItem(13, display);
+            gui.setItem(13, auctionDisplay());
 
             double balance = plugin.economy().getBalance(player);
             gui.setItem(10, button(Material.EMERALD, "§aBid minimum",
@@ -82,6 +70,32 @@ public final class AuctionGui implements Listener, CommandExecutor {
             gui.setItem(22, button(Material.CLOCK, "§eRefresh", List.of("§7Refresh auction details"), "refresh"));
         }
         player.openInventory(gui);
+    }
+
+    private ItemStack auctionDisplay() {
+        ItemStack display = auctions.auctionItem();
+        if (display == null) return new ItemStack(Material.BARRIER);
+        ItemMeta meta = display.getItemMeta();
+        meta.setDisplayName("§6§lAuction Item");
+        List<String> lore = new ArrayList<>(List.of(
+                "§7Current bid: §a" + plugin.economy().format(auctions.currentBid()),
+                "§7Minimum next bid: §e" + plugin.economy().format(auctions.nextMinimum()),
+                "§7Highest bidder: §f" + (auctions.highestBidderName().isEmpty() ? "None" : auctions.highestBidderName()),
+                "§7Time remaining: §e" + auctions.secondsLeft() + "s", "",
+                "§aChoose a bid amount below.", "", "§6Recent bids:"));
+        if (auctions.recentBids().isEmpty()) lore.add("§7No bids yet");
+        else auctions.recentBids().stream().limit(5).forEach(b -> lore.add("§7" + b));
+        meta.setLore(lore);
+        display.setItemMeta(meta);
+        return display;
+    }
+
+    private void refreshOpenAuctions() {
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            if (TITLE.equals(player.getOpenInventory().getTitle()) && auctions.isActive()) {
+                player.getOpenInventory().getTopInventory().setItem(13, auctionDisplay());
+            }
+        }
     }
 
     private ItemStack button(Material material, String name, List<String> lore, String action) {
