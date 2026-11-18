@@ -34,6 +34,7 @@ public final class AuctionManager implements Listener {
     private long endsAt;
     private long lastBidAt;
     private boolean active;
+    private String settlementReview = "";
     private BukkitTask timer;
 
     AuctionManager(ClasherBidPlugin plugin, Economy economy) {
@@ -44,6 +45,7 @@ public final class AuctionManager implements Listener {
     }
 
     public boolean isActive() { return active; }
+    public String settlementReview() { return settlementReview; }
     public ItemStack auctionItem() { return item == null ? null : item.clone(); }
     public double currentBid() { return currentBid; }
     public UUID highestBidder() { return bidder; }
@@ -122,7 +124,7 @@ public final class AuctionManager implements Listener {
     }
 
     public void finish() {
-        if (!active) return;
+        if (!active || !settlementReview.isEmpty()) return;
         if (bidder == null) {
             recordHistory("No bids", 0.0);
             deliver(seller, item);
@@ -138,14 +140,21 @@ public final class AuctionManager implements Listener {
                 schedule();
                 return;
             }
+            // Persist a transaction intent before touching Vault. If the process crashes
+            // in the uncertain window, startup will freeze settlement for admin review.
+            settlementReview = "PAYOUT_PENDING";
+            persist();
             EconomyResponse deposit = economy.depositPlayer(Bukkit.getOfflinePlayer(payee), escrow);
             if (!deposit.transactionSuccess()) {
+                settlementReview = "";
                 Bukkit.broadcastMessage("§cClasherBid payout failed; settlement will retry.");
                 endsAt = System.currentTimeMillis() + 60_000L;
                 persist();
                 schedule();
                 return;
             }
+            settlementReview = "PAYOUT_COMPLETED";
+            persist();
             recordHistory(bidderName, currentBid);
             deliver(bidder, item);
             Bukkit.broadcastMessage("§6§lAUCTION ENDED §e" + bidderName + " §7won §f"
@@ -249,9 +258,13 @@ public final class AuctionManager implements Listener {
         endsAt = yaml.getLong("endsAt");
         bidHistory.clear();
         bidHistory.addAll(yaml.getStringList("recentBids"));
+        settlementReview = yaml.getString("settlementReview", "");
         active = item != null && seller != null;
         if (active) {
-            if (endsAt <= System.currentTimeMillis()) finish();
+            if (!settlementReview.isEmpty()) {
+                plugin.getLogger().severe("Auction settlement frozen for admin review: " + settlementReview
+                        + ". Do NOT manually retry payout until economy balances are checked.");
+            } else if (endsAt <= System.currentTimeMillis()) finish();
             else schedule();
         }
     }
@@ -268,7 +281,7 @@ public final class AuctionManager implements Listener {
 
     private void persist() {
         YamlConfiguration yaml = new YamlConfiguration();
-        yaml.set("active", active);
+        yaml.set("active", active);\n        yaml.set("settlementReview", settlementReview);
         yaml.set("item", item);
         yaml.set("seller", seller == null ? null : seller.toString());
         yaml.set("bidder", bidder == null ? null : bidder.toString());
