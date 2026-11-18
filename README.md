@@ -18,10 +18,11 @@ GUI-based single-item auction plugin for Clasher Network.
 - `/clasherbid cancel` — cancel and refund
 - `/clasherbid status` — show current auction state
 - `/clasherbid history` — recent auction history
-- `/clasherbid recover <player>` — recover a recorded failed refund (admin only)
+- `/clasherbid recover <player>` — start guarded recovery of a recorded failed refund (admin only)
+- `/clasherbid refund-review <player> <paid|unpaid>` — resolve an interrupted or uncertain refund recovery; verify economy balances before deciding
 - `/clasherbid settlement` — inspect a frozen payout for manual review (admin only)
 - `/clasherbid settlement paid` — admin confirms payout was completed; finalizes winner item delivery
-- `/clasherbid settlement unpaid` — admin confirms no payout occurred; returns item and attempts bidder refund
+- `/clasherbid settlement unpaid` — admin confirms no payout occurred; returns item and records the bidder refund as a recovery liability (recover separately after review)
 
 Requires `clasherbid.admin` (default: op).
 
