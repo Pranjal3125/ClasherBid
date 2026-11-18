@@ -1,0 +1,18 @@
+name: ClasherBid
+version: 0.1.0-SNAPSHOT
+main: network.clasherbid.ClasherBidPlugin
+api-version: '26.2'
+depend: [Vault]
+commands:
+  bid:
+    description: Open the bidding GUI
+    usage: /bid
+    aliases: [auction]
+  clasherbid:
+    description: Manage the active auction
+    usage: /clasherbid <start|cancel|status>
+    permission: clasherbid.admin
+permissions:
+  clasherbid.admin:
+    description: Manage auctions
+    default: op
