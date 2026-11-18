@@ -281,7 +281,8 @@ public final class AuctionManager implements Listener {
 
     private void persist() {
         YamlConfiguration yaml = new YamlConfiguration();
-        yaml.set("active", active);\n        yaml.set("settlementReview", settlementReview);
+        yaml.set("active", active);
+        yaml.set("settlementReview", settlementReview);
         yaml.set("item", item);
         yaml.set("seller", seller == null ? null : seller.toString());
         yaml.set("bidder", bidder == null ? null : bidder.toString());
