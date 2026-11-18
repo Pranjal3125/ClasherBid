@@ -2,17 +2,17 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>network.clasher</groupId><artifactId>ClasherBid</artifactId><version>0.1.0-SNAPSHOT</version>
   <name>ClasherBid</name><description>GUI auction plugin with Vault escrow</description>
-  <properties><maven.compiler.release>21</maven.compiler.release><project.build.sourceEncoding>UTF-8</project.build.sourceEncoding></properties>
+  <properties><maven.compiler.release>25</maven.compiler.release><project.build.sourceEncoding>UTF-8</project.build.sourceEncoding></properties>
   <repositories>
     <repository><id>papermc</id><url>https://repo.papermc.io/repository/maven-public/</url></repository>
     <repository><id>jitpack</id><url>https://jitpack.io</url></repository>
   </repositories>
   <dependencies>
-    <dependency><groupId>io.papermc.paper</groupId><artifactId>paper-api</artifactId><version>26.2.build-SNAPSHOT</version><scope>provided</scope></dependency>
+    <dependency><groupId>io.papermc.paper</groupId><artifactId>paper-api</artifactId><version>26.2.build.135-stable</version><scope>provided</scope></dependency>
     <dependency><groupId>com.github.MilkBowl</groupId><artifactId>VaultAPI</artifactId><version>1.7</version><scope>provided</scope></dependency>
   </dependencies>
   <build><plugins>
-    <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-compiler-plugin</artifactId><version>3.13.0</version><configuration><release>21</release></configuration></plugin>
+    <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-compiler-plugin</artifactId><version>3.13.0</version><configuration><release>25</release></configuration></plugin>
     <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-shade-plugin</artifactId><version>3.6.0</version><executions><execution><phase>package</phase><goals><goal>shade</goal></goals></execution></executions></plugin>
   </plugins></build>
 </project>
