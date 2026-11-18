@@ -631,8 +631,15 @@ public final class AuctionManager implements Listener {
         pendingRefundPlayer = parseUuid(yaml.getString("pendingRefundPlayer"));
         pendingRefundAmount = yaml.getDouble("pendingRefundAmount", 0.0);
         auctionId = parseUuid(yaml.getString("auctionId"));
-        if (auctionId == null) auctionId = UUID.randomUUID();
+        boolean migratedAuctionId = auctionId == null;
+        if (migratedAuctionId) {
+            auctionId = UUID.randomUUID();
+            if (settlementReview.isEmpty()) settlementReview = "AUCTION_ID_MIGRATION_PENDING";
+        }
         active = item != null && seller != null;
+        if (active && migratedAuctionId && !persist()) {
+            plugin.getLogger().severe("Legacy auction ID migration could not be persisted; auction remains frozen for admin settlement review.");
+        }
         if (active) {
             if (!settlementReview.isEmpty()) {
                 plugin.getLogger().severe("Auction settlement frozen for admin review: " + settlementReview
