@@ -21,7 +21,7 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
             else { auctions.cancel(); sender.sendMessage("§aAuction cancelled."); }
             return true;
         }
-        if (args.length == 1 && args[0].equalsIgnoreCase("status")) {
+        if (args.length == 1 && args[0].equalsIgnoreCase("history")) {\n            List<String> entries = auctions.auctionHistory();\n            sender.sendMessage("§6§lClasherBid History §7(Recent 25)");\n            if (entries.isEmpty()) sender.sendMessage("§7No recorded auctions yet.");\n            else entries.stream().limit(10).forEach(entry -> sender.sendMessage("§7- §f" + entry));\n            return true;\n        }\n        if (args.length == 1 && args[0].equalsIgnoreCase("status")) {
             if (!auctions.isActive()) sender.sendMessage("§7No active auction.");
             else sender.sendMessage("§6Auction: §f" + auctions.auctionItem().getType() + " §7| Bid: §a"
                     + plugin.economy().format(auctions.currentBid()) + " §7| Top: §e"
@@ -43,13 +43,13 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
         }
         sender.sendMessage("§e/clasherbid start <minutes> <starting-price>");
         sender.sendMessage("§e/clasherbid cancel");
-        sender.sendMessage("§e/clasherbid status");
+        sender.sendMessage("§e/clasherbid status");\n        sender.sendMessage("§e/clasherbid history");
         return true;
     }
 
     @Override public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (!sender.hasPermission("clasherbid.admin")) return List.of();
-        if (args.length == 1) return List.of("start", "cancel", "status").stream()
+        if (args.length == 1) return List.of("start", "cancel", "status", "history").stream()
                 .filter(s -> s.startsWith(args[0].toLowerCase(Locale.ROOT))).collect(Collectors.toList());
         if (args.length == 2 && args[0].equalsIgnoreCase("start")) return List.of("5", "10", "15", "30");
         if (args.length == 3 && args[0].equalsIgnoreCase("start")) return List.of("100", "500", "1000", "5000");
