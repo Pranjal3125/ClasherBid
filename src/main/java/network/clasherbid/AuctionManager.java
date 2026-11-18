@@ -12,6 +12,8 @@ import org.bukkit.scheduler.BukkitTask;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.UUID;
 import java.util.logging.Level;
 
@@ -332,7 +334,17 @@ public final class AuctionManager implements Listener {
         yaml.set("escrow", escrow);
         yaml.set("endsAt", endsAt);
         yaml.set("recentBids", new java.util.ArrayList<>(bidHistory));
-        try { yaml.save(file); }
-        catch (IOException ex) { plugin.getLogger().log(Level.SEVERE, "Could not save active auction", ex); }
+        File tempFile = new File(plugin.getDataFolder(), "active-auction.yml.tmp");
+        try {
+            yaml.save(tempFile);
+            Files.move(tempFile.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        } catch (IOException atomicFailure) {
+            try {
+                Files.move(tempFile.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            } catch (IOException fallbackFailure) {
+                fallbackFailure.addSuppressed(atomicFailure);
+                plugin.getLogger().log(Level.SEVERE, "Could not safely persist active auction. The previous file may remain intact.", fallbackFailure);
+            }
+        }
     }
 }
