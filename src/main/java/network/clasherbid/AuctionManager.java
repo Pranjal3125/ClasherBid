@@ -164,6 +164,24 @@ public final class AuctionManager implements Listener {
         clear();
     }
 
+    public boolean resolveSettlementPaid() {
+        if (!active || settlementReview.isEmpty() || bidder == null || item == null) return false;
+        recordHistory(bidderName, currentBid);
+        deliver(bidder, item);
+        Bukkit.broadcastMessage("§6ClasherBid §eSettlement manually confirmed paid by admin. Winner item delivery completed.");
+        clear();
+        return true;
+    }
+
+    public boolean resolveSettlementUnpaid() {
+        if (!active || settlementReview.isEmpty() || item == null || seller == null) return false;
+        if (bidder != null && escrow > 0) refund(bidder, escrow);
+        deliver(seller, item);
+        Bukkit.broadcastMessage("§6ClasherBid §eSettlement manually confirmed unpaid by admin. Auction item returned.");
+        clear();
+        return true;
+    }
+
     private void recordHistory(String winner, double amount) {
         String entry = item.getType() + " | " + winner + " | " + economy.format(amount) + " | " + java.time.Instant.now();
         history.add(0, entry);
