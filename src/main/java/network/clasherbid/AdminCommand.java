@@ -77,7 +77,7 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
 
     @Override public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (!sender.hasPermission("clasherbid.admin")) return List.of();
-        if (args.length == 1) return List.of("start", "cancel", "status", "history", "recover").stream()
+        if (args.length == 1) return List.of("start", "cancel", "status", "history", "recover", "settlement").stream()
                 .filter(s -> s.startsWith(args[0].toLowerCase(Locale.ROOT))).collect(Collectors.toList());
         if (args.length == 2 && args[0].equalsIgnoreCase("start")) return List.of("1", "5", "10", "15", "30", "60", "120");
         if (args.length == 2 && args[0].equalsIgnoreCase("recover")) return plugin.getServer().getOnlinePlayers().stream().map(Player::getName).toList();
