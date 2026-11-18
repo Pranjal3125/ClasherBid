@@ -1,0 +1,241 @@
+package network.clasherbid;
+
+import net.milkbowl.vault.economy.Economy;
+import net.milkbowl.vault.economy.EconomyResponse;
+import org.bukkit.Bukkit;
+import org.bukkit.OfflinePlayer;
+import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.Player;
+import org.bukkit.event.Listener;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.scheduler.BukkitTask;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.UUID;
+import java.util.logging.Level;
+
+/**
+ * Single-auction state machine. All public mutations are invoked on the server thread.
+ * The highest bid is escrowed immediately and refunded when outbid/cancelled.
+ */
+public final class AuctionManager implements Listener {
+    private final ClasherBidPlugin plugin;
+    private final Economy economy;
+    private final File file;
+    private ItemStack item;
+    private UUID seller;
+    private UUID bidder;
+    private String bidderName = "";
+    private double currentBid;
+    private double escrow;
+    private long endsAt;
+    private long lastBidAt;
+    private boolean active;
+    private BukkitTask timer;
+
+    AuctionManager(ClasherBidPlugin plugin, Economy economy) {
+        this.plugin = plugin;
+        this.economy = economy;
+        this.file = new File(plugin.getDataFolder(), "active-auction.yml");
+    }
+
+    public boolean isActive() { return active; }
+    public ItemStack auctionItem() { return item == null ? null : item.clone(); }
+    public double currentBid() { return currentBid; }
+    public UUID highestBidder() { return bidder; }
+    public String highestBidderName() { return bidderName; }
+    public long secondsLeft() { return active ? Math.max(0, (endsAt - System.currentTimeMillis() + 999) / 1000) : 0; }
+    public double nextMinimum() { return active ? currentBid + plugin.getConfig().getDouble("minimum-increment", 100.0) : 0; }
+
+    public boolean start(Player admin, ItemStack stack, double openingBid, long durationSeconds) {
+        if (active || stack == null || stack.getType().isAir() || durationSeconds < 30
+                || !Double.isFinite(openingBid) || openingBid < 0) return false;
+        item = stack.clone();
+        seller = admin.getUniqueId();
+        bidder = null;
+        bidderName = "";
+        currentBid = openingBid;
+        escrow = 0;
+        endsAt = System.currentTimeMillis() + durationSeconds * 1000L;
+        active = true;
+        persist();
+        schedule();
+        Bukkit.broadcastMessage("§6§lCLASHERBID §eAuction started: §f" + item.getType()
+                + " §7| Opening bid: §a" + economy.format(openingBid) + " §7| §e/bid");
+        return true;
+    }
+
+    public String placeBid(Player player, double amount) {
+        if (!active) return "§cThere is no active auction.";
+        if (player.getUniqueId().equals(seller)) return "§cYou cannot bid on your own auction.";
+        long cooldown = plugin.getConfig().getLong("bid-cooldown-seconds", 2) * 1000L;
+        if (System.currentTimeMillis() - lastBidAt < cooldown) return "§cPlease wait before bidding again.";
+        if (!Double.isFinite(amount) || amount < nextMinimum())
+            return "§cMinimum next bid: §e" + economy.format(nextMinimum());
+
+        // Withdraw the full new bid first. The previous escrow is refunded only
+        // after the new withdrawal succeeds, avoiding an unbacked high bid.
+        EconomyResponse withdrawal = economy.withdrawPlayer(player, amount);
+        if (!withdrawal.transactionSuccess()) return "§cBid failed: " + withdrawal.errorMessage;
+
+        UUID previousBidder = bidder;
+        double previousEscrow = escrow;
+        bidder = player.getUniqueId();
+        bidderName = player.getName();
+        currentBid = amount;
+        escrow = amount;
+        lastBidAt = System.currentTimeMillis();
+
+        if (previousBidder != null) refund(previousBidder, previousEscrow);
+        if (plugin.getConfig().getBoolean("anti-sniping.enabled", true)
+                && secondsLeft() <= plugin.getConfig().getLong("anti-sniping.trigger-seconds", 15)) {
+            endsAt += plugin.getConfig().getLong("anti-sniping.extend-seconds", 30) * 1000L;
+        }
+        persist();
+        Bukkit.broadcastMessage("§6§lCLASHERBID §e" + player.getName() + " §7bid §a"
+                + economy.format(amount) + " §7on §f" + item.getType());
+        return "§aYour bid of §e" + economy.format(amount) + " §awas accepted. Funds are held until outbid or auction end.";
+    }
+
+    public void cancel() {
+        if (!active) return;
+        if (bidder != null) refund(bidder, escrow);
+        deliver(seller, item);
+        clear();
+        Bukkit.broadcastMessage("§6ClasherBid §cAuction cancelled. Item returned and bidder refunded.");
+    }
+
+    private void schedule() {
+        if (timer != null) timer.cancel();
+        timer = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            if (active && System.currentTimeMillis() >= endsAt) finish();
+        }, 20L, 20L);
+    }
+
+    public void finish() {
+        if (!active) return;
+        if (bidder == null) {
+            deliver(seller, item);
+            Bukkit.broadcastMessage("§6ClasherBid §7Auction ended without bids; item returned.");
+        } else {
+            UUID payee = payoutAccount();
+            if (payee == null) {
+                // Keep auction and escrow intact so the admin can fix the payout
+                // account instead of silently destroying money or the item.
+                Bukkit.broadcastMessage("§cClasherBid payout account unavailable; auction settlement paused.");
+                endsAt = System.currentTimeMillis() + 60_000L;
+                persist();
+                schedule();
+                return;
+            }
+            EconomyResponse deposit = economy.depositPlayer(Bukkit.getOfflinePlayer(payee), escrow);
+            if (!deposit.transactionSuccess()) {
+                Bukkit.broadcastMessage("§cClasherBid payout failed; settlement will retry.");
+                endsAt = System.currentTimeMillis() + 60_000L;
+                persist();
+                schedule();
+                return;
+            }
+            deliver(bidder, item);
+            Bukkit.broadcastMessage("§6§lAUCTION ENDED §e" + bidderName + " §7won §f"
+                    + item.getType() + " §7for §a" + economy.format(currentBid) + "§7!");
+        }
+        clear();
+    }
+
+    private UUID payoutAccount() {
+        String configured = plugin.getConfig().getString("payout-player", "").trim();
+        if (configured.isEmpty()) return seller;
+        OfflinePlayer account = Bukkit.getOfflinePlayer(configured);
+        return account.getUniqueId();
+    }
+
+    private void refund(UUID playerId, double amount) {
+        EconomyResponse response = economy.depositPlayer(Bukkit.getOfflinePlayer(playerId), amount);
+        if (!response.transactionSuccess()) {
+            plugin.getLogger().severe("Refund failed for " + playerId + ": " + response.errorMessage
+                    + ". Escrow remains recorded for manual recovery.");
+            plugin.getConfig().set("recovery.refund." + playerId, plugin.getConfig().getDouble("recovery.refund." + playerId) + amount);
+            plugin.saveConfig();
+        }
+    }
+
+    private void deliver(UUID playerId, ItemStack stack) {
+        if (playerId == null || stack == null) return;
+        Player online = Bukkit.getPlayer(playerId);
+        if (online != null && online.isOnline()) {
+            if (!online.getInventory().addItem(stack.clone()).isEmpty())
+                online.getWorld().dropItemNaturally(online.getLocation(), stack.clone());
+        } else {
+            plugin.getConfig().set("pending-delivery." + playerId, stack.clone());
+            plugin.saveConfig();
+        }
+    }
+
+    public void claim(Player player) {
+        ItemStack pending = plugin.getConfig().getItemStack("pending-delivery." + player.getUniqueId());
+        if (pending == null) return;
+        if (player.getInventory().addItem(pending).isEmpty()) {
+            plugin.getConfig().set("pending-delivery." + player.getUniqueId(), null);
+            plugin.saveConfig();
+            player.sendMessage("§aYour auction item has been delivered.");
+        }
+    }
+
+    private void clear() {
+        if (timer != null) timer.cancel();
+        timer = null;
+        active = false;
+        item = null;
+        seller = null;
+        bidder = null;
+        bidderName = "";
+        currentBid = 0;
+        escrow = 0;
+        endsAt = 0;
+        persist();
+    }
+
+    public void load() {
+        if (!file.exists()) return;
+        YamlConfiguration yaml = YamlConfiguration.loadConfiguration(file);
+        if (!yaml.getBoolean("active")) return;
+        item = yaml.getItemStack("item");
+        seller = parseUuid(yaml.getString("seller"));
+        bidder = parseUuid(yaml.getString("bidder"));
+        bidderName = yaml.getString("bidderName", "");
+        currentBid = yaml.getDouble("currentBid");
+        escrow = yaml.getDouble("escrow");
+        endsAt = yaml.getLong("endsAt");
+        active = item != null && seller != null;
+        if (active) {
+            if (endsAt <= System.currentTimeMillis()) finish();
+            else schedule();
+        }
+    }
+
+    private UUID parseUuid(String raw) {
+        try { return raw == null ? null : UUID.fromString(raw); }
+        catch (IllegalArgumentException ignored) { return null; }
+    }
+
+    public void shutdown() {
+        if (timer != null) timer.cancel();
+        persist();
+    }
+
+    private void persist() {
+        YamlConfiguration yaml = new YamlConfiguration();
+        yaml.set("active", active);
+        yaml.set("item", item);
+        yaml.set("seller", seller == null ? null : seller.toString());
+        yaml.set("bidder", bidder == null ? null : bidder.toString());
+        yaml.set("bidderName", bidderName);
+        yaml.set("currentBid", currentBid);
+        yaml.set("escrow", escrow);
+        yaml.set("endsAt", endsAt);
+        try { yaml.save(file); }
+        catch (IOException ex) { plugin.getLogger().log(Level.SEVERE, "Could not save active auction", ex); }
+    }
+}
