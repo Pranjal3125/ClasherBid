@@ -21,7 +21,14 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
             else { auctions.cancel(); sender.sendMessage("§aAuction cancelled."); }
             return true;
         }
-        if (args.length == 1 && args[0].equalsIgnoreCase("history")) {\n            List<String> entries = auctions.auctionHistory();\n            sender.sendMessage("§6§lClasherBid History §7(Recent 25)");\n            if (entries.isEmpty()) sender.sendMessage("§7No recorded auctions yet.");\n            else entries.stream().limit(10).forEach(entry -> sender.sendMessage("§7- §f" + entry));\n            return true;\n        }\n        if (args.length == 1 && args[0].equalsIgnoreCase("status")) {
+        if (args.length == 1 && args[0].equalsIgnoreCase("history")) {
+            List<String> entries = auctions.auctionHistory();
+            sender.sendMessage("§6§lClasherBid History §7(Recent 25)");
+            if (entries.isEmpty()) sender.sendMessage("§7No recorded auctions yet.");
+            else entries.stream().limit(10).forEach(entry -> sender.sendMessage("§7- §f" + entry));
+            return true;
+        }
+        if (args.length == 1 && args[0].equalsIgnoreCase("status")) {
             if (!auctions.isActive()) sender.sendMessage("§7No active auction.");
             else sender.sendMessage("§6Auction: §f" + auctions.auctionItem().getType() + " §7| Bid: §a"
                     + plugin.economy().format(auctions.currentBid()) + " §7| Top: §e"
@@ -43,7 +50,8 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
         }
         sender.sendMessage("§e/clasherbid start <minutes> <starting-price>");
         sender.sendMessage("§e/clasherbid cancel");
-        sender.sendMessage("§e/clasherbid status");\n        sender.sendMessage("§e/clasherbid history");
+        sender.sendMessage("§e/clasherbid status");
+        sender.sendMessage("§e/clasherbid history");
         return true;
     }
 
