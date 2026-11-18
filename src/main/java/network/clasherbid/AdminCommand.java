@@ -1,0 +1,58 @@
+package network.clasherbid;
+
+import org.bukkit.Material;
+import org.bukkit.command.*;
+import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
+
+import java.util.List;
+import java.util.Locale;
+import java.util.stream.Collectors;
+
+public final class AdminCommand implements CommandExecutor, TabCompleter {
+    private final ClasherBidPlugin plugin;
+    private final AuctionManager auctions;
+    AdminCommand(ClasherBidPlugin plugin, AuctionManager auctions) { this.plugin = plugin; this.auctions = auctions; }
+
+    @Override public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (!sender.hasPermission("clasherbid.admin")) { sender.sendMessage("§cNo permission."); return true; }
+        if (args.length == 1 && args[0].equalsIgnoreCase("cancel")) {
+            if (!auctions.isActive()) sender.sendMessage("§cNo active auction.");
+            else { auctions.cancel(); sender.sendMessage("§aAuction cancelled."); }
+            return true;
+        }
+        if (args.length == 1 && args[0].equalsIgnoreCase("status")) {
+            if (!auctions.isActive()) sender.sendMessage("§7No active auction.");
+            else sender.sendMessage("§6Auction: §f" + auctions.auctionItem().getType() + " §7| Bid: §a"
+                    + plugin.economy().format(auctions.currentBid()) + " §7| Top: §e"
+                    + auctions.highestBidderName() + " §7| Time: §e" + auctions.secondsLeft() + "s");
+            return true;
+        }
+        if (args.length == 3 && args[0].equalsIgnoreCase("start")) {
+            if (!(sender instanceof Player player)) { sender.sendMessage("§cOnly an in-game admin can start an auction."); return true; }
+            long minutes; double price;
+            try { minutes = Long.parseLong(args[1]); price = Double.parseDouble(args[2]); }
+            catch (NumberFormatException ex) { sender.sendMessage("§cUsage: /clasherbid start <minutes> <starting-price>"); return true; }
+            ItemStack held = player.getInventory().getItemInMainHand();
+            if (held.getType() == Material.AIR) { sender.sendMessage("§cHold the auction item in your main hand."); return true; }
+            if (auctions.start(player, held.clone(), price, minutes * 60L)) {
+                player.getInventory().setItemInMainHand(null);
+                sender.sendMessage("§aAuction started.");
+            } else sender.sendMessage("§cCould not start auction. Is another auction active or are arguments invalid?");
+            return true;
+        }
+        sender.sendMessage("§e/clasherbid start <minutes> <starting-price>");
+        sender.sendMessage("§e/clasherbid cancel");
+        sender.sendMessage("§e/clasherbid status");
+        return true;
+    }
+
+    @Override public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        if (!sender.hasPermission("clasherbid.admin")) return List.of();
+        if (args.length == 1) return List.of("start", "cancel", "status").stream()
+                .filter(s -> s.startsWith(args[0].toLowerCase(Locale.ROOT))).collect(Collectors.toList());
+        if (args.length == 2 && args[0].equalsIgnoreCase("start")) return List.of("5", "10", "15", "30");
+        if (args.length == 3 && args[0].equalsIgnoreCase("start")) return List.of("100", "500", "1000", "5000");
+        return List.of();
+    }
+}
