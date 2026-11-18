@@ -215,12 +215,32 @@ public final class AuctionManager implements Listener {
         return plugin.getConfig().getDouble("recovery.refund." + playerId, 0.0);
     }
 
+    public String refundReview(UUID playerId) {
+        return plugin.getConfig().getString("recovery.refund-review." + playerId, "");
+    }
+
+    /**
+     * Starts a refund recovery with a durable review marker before Vault is called.
+     * A crash after the deposit but before config cleanup must never permit blind retry.
+     */
     public boolean recoverRefund(UUID playerId) {
         double amount = pendingRefund(playerId);
-        if (!Double.isFinite(amount) || amount <= 0) return false;
+        if (!Double.isFinite(amount) || amount <= 0 || !refundReview(playerId).isEmpty()) return false;
+        plugin.getConfig().set("recovery.refund-review." + playerId, "REFUND_PENDING");
+        plugin.saveConfig();
         EconomyResponse response = economy.depositPlayer(Bukkit.getOfflinePlayer(playerId), amount);
-        if (!response.transactionSuccess()) return false;
+        if (!response.transactionSuccess()) return false; // keep marker for manual review
         plugin.getConfig().set("recovery.refund." + playerId, null);
+        plugin.getConfig().set("recovery.refund-review." + playerId, null);
+        plugin.saveConfig();
+        return true;
+    }
+
+    /** paid=true clears the debt; paid=false authorizes a later retry after balance verification. */
+    public boolean resolveRefundReview(UUID playerId, boolean paid) {
+        if (refundReview(playerId).isEmpty()) return false;
+        if (paid) plugin.getConfig().set("recovery.refund." + playerId, null);
+        plugin.getConfig().set("recovery.refund-review." + playerId, null);
         plugin.saveConfig();
         return true;
     }
