@@ -78,6 +78,7 @@ public final class AuctionManager implements Listener {
 
     public String placeBid(Player player, double amount) {
         if (!active) return "§cThere is no active auction.";
+        if (!settlementReview.isEmpty()) return "§cThis auction is frozen for admin settlement review. Bidding is disabled.";
         if (player.getUniqueId().equals(seller)) return "§cYou cannot bid on your own auction.";
         long cooldown = plugin.getConfig().getLong("bid-cooldown-seconds", 2) * 1000L;
         if (System.currentTimeMillis() - lastBidAt < cooldown) return "§cPlease wait before bidding again.";
