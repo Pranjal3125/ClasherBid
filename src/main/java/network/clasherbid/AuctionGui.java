@@ -92,8 +92,13 @@ public final class AuctionGui implements Listener, CommandExecutor {
 
     private void refreshOpenAuctions() {
         for (Player player : Bukkit.getOnlinePlayers()) {
-            if (TITLE.equals(player.getOpenInventory().getTitle()) && auctions.isActive()) {
+            if (TITLE.equals(player.getOpenInventory().getTitle())) {
                 Inventory top = player.getOpenInventory().getTopInventory();
+                if (!auctions.isActive()) {
+                    top.setItem(13, button(Material.BARRIER, "§cNo active auction", List.of("§7Check again later."), "none"));
+                    for (int slot : new int[]{10, 11, 12, 14, 15, 22}) top.setItem(slot, null);
+                    continue;
+                }
                 top.setItem(13, auctionDisplay());
                 double balance = plugin.economy().getBalance(player);
                 top.setItem(10, button(Material.EMERALD, "§aBid minimum",
@@ -108,6 +113,8 @@ public final class AuctionGui implements Listener, CommandExecutor {
                 top.setItem(14, button(Material.EMERALD_BLOCK, "§aBid +$5,000",
                         List.of("§7Amount: §e" + plugin.economy().format(auctions.currentBid() + 5000),
                                 "§7Balance: §e" + plugin.economy().format(balance)), "plus5000"));
+                top.setItem(15, button(Material.PAPER, "§eCustom bid", List.of("§7Enter amount in chat"), "custom"));
+                top.setItem(22, button(Material.CLOCK, "§eRefresh", List.of("§7Refresh auction details"), "refresh"));
             }
         }
     }
