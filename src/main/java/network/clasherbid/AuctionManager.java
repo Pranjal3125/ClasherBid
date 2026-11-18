@@ -241,7 +241,7 @@ public final class AuctionManager implements Listener {
             settlementReview = "DELIVERY_PENDING";
             if (!persist()) { settlementReview = ""; return; }
             if (!queueDelivery(seller, item, "auction-" + auctionTransactionId() + "-seller-return")) return;
-            recordHistory("No bids", 0.0, auctionTransactionId());
+            if (!recordHistory("No bids", 0.0, auctionTransactionId())) return;
             Bukkit.broadcastMessage("§6ClasherBid §7Auction ended without bids; item queued for claim.");
         } else {
             UUID payee = payoutAccount();
@@ -279,7 +279,7 @@ public final class AuctionManager implements Listener {
             settlementReview = "PAYOUT_COMPLETED";
             if (!persist()) return;
             if (!queueDelivery(bidder, item, "auction-" + auctionTransactionId() + "-winner")) return;
-            recordHistory(bidderName, currentBid, auctionTransactionId());
+            if (!recordHistory(bidderName, currentBid, auctionTransactionId())) return;
             Bukkit.broadcastMessage("§6§lAUCTION ENDED §e" + bidderName + " §7won §f"
                     + item.getType() + " §7for §a" + economy.format(currentBid) + "§7! Item queued for claim.");
         }
@@ -362,7 +362,7 @@ public final class AuctionManager implements Listener {
     public boolean resolveSettlementPaid() {
         if (!active || settlementReview.isEmpty() || settlementReview.startsWith("BID_PENDING") || settlementReview.equals("CANCEL_PENDING") || bidder == null || item == null) return false;
         if (!queueDelivery(bidder, item, "auction-" + auctionTransactionId() + "-winner")) return false;
-        recordHistory(bidderName, currentBid, auctionTransactionId());
+        if (!recordHistory(bidderName, currentBid, auctionTransactionId())) return false;
         Bukkit.broadcastMessage("§6ClasherBid §eSettlement manually confirmed paid by admin. Winner item queued for claim.");
         return clear();
     }
@@ -406,8 +406,9 @@ public final class AuctionManager implements Listener {
     }
 
     /** Records each auction once, even when settlement is retried after a crash. */
-    private void recordHistory(String winner, double amount, String transactionId) {
-        if (transactionId == null || !recordedHistoryTransactions.add(transactionId)) return;
+    private boolean recordHistory(String winner, double amount, String transactionId) {
+        if (transactionId == null) return false;
+        if (!recordedHistoryTransactions.add(transactionId)) return true;
         String entry = item.getType() + " | " + winner + " | " + economy.format(amount) + " | " + java.time.Instant.now();
         history.add(0, entry);
         while (history.size() > 25) history.remove(history.size() - 1);
