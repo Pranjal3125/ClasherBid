@@ -86,7 +86,8 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
         if (args.length == 1 && args[0].equalsIgnoreCase("cancel")) {
             if (!auctions.isActive()) sender.sendMessage("§cNo active auction.");
             else if (!auctions.settlementReview().isEmpty()) sender.sendMessage("§cSettlement is frozen for review. Use /clasherbid settlement first.");
-            else { auctions.cancel(); sender.sendMessage("§aAuction cancelled."); }
+            else if (auctions.cancel()) sender.sendMessage("§eCancellation frozen for reconciliation. Verify balances/items, then use /clasherbid settlement <paid|unpaid>.");
+            else sender.sendMessage("§cCancellation could not be persisted; no cancellation actions were performed.");
             return true;
         }
         if (args.length == 1 && args[0].equalsIgnoreCase("history")) {
