@@ -72,7 +72,7 @@ public final class AuctionManager implements Listener {
         currentBid = openingBid;
         escrow = 0;
         endsAt = System.currentTimeMillis() + durationSeconds * 1000L;
-        settlementReview = "";
+        settlementReview = "START_PENDING";
         active = true;
         if (!persist()) {
             active = false;
@@ -86,9 +86,50 @@ public final class AuctionManager implements Listener {
             settlementReview = "";
             return false;
         }
+        // Auction remains frozen until AdminCommand confirms the held item was removed.
+        return true;
+    }
+
+    public boolean completeStart() {
+        if (!active || !"START_PENDING".equals(settlementReview)) return false;
+        settlementReview = "";
+        if (!persist()) {
+            settlementReview = "START_PENDING";
+            return false;
+        }
         schedule();
         Bukkit.broadcastMessage("§6§lCLASHERBID §eAuction started: §f" + item.getType()
-                + " §7| Opening bid: §a" + economy.format(openingBid) + " §7| §e/bid");
+                + " §7| Opening bid: §a" + economy.format(currentBid) + " §7| §e/bid");
+        return true;
+    }
+
+    /** Resolve a crash during auction start after verifying whether the item was removed from the admin. */
+    public boolean resolveStartReview(boolean itemRemoved) {
+        if (!active || !"START_PENDING".equals(settlementReview)) return false;
+        if (itemRemoved) {
+            settlementReview = "";
+            if (!persist()) {
+                settlementReview = "START_PENDING";
+                return false;
+            }
+            schedule();
+            Bukkit.broadcastMessage("§6§lCLASHERBID §eAuction start reconciled; auction is active.");
+            return true;
+        }
+        active = false;
+        item = null;
+        seller = null;
+        bidder = null;
+        bidderName = "";
+        currentBid = 0;
+        escrow = 0;
+        endsAt = 0;
+        settlementReview = "";
+        if (!persist()) {
+            active = true;
+            settlementReview = "START_PENDING";
+            return false;
+        }
         return true;
     }
 
