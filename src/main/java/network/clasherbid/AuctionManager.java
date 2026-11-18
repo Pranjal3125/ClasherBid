@@ -266,8 +266,9 @@ public final class AuctionManager implements Listener {
         if (playerId == null || stack == null) return;
         Player online = Bukkit.getPlayer(playerId);
         if (online != null && online.isOnline()) {
-            if (!online.getInventory().addItem(stack.clone()).isEmpty())
-                online.getWorld().dropItemNaturally(online.getLocation(), stack.clone());
+            java.util.Map<Integer, ItemStack> overflow = online.getInventory().addItem(stack.clone());
+            overflow.values().forEach(leftover ->
+                    online.getWorld().dropItemNaturally(online.getLocation(), leftover.clone()));
         } else {
             String path = "pending-delivery." + playerId;
             java.util.List<?> raw = plugin.getConfig().getList(path);
