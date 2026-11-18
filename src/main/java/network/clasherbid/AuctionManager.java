@@ -27,6 +27,7 @@ public final class AuctionManager implements Listener {
     private final File file;
     private final File historyFile;
     private final java.util.ArrayList<String> history = new java.util.ArrayList<>();
+    private final java.util.Set<String> recordedHistoryTransactions = new java.util.HashSet<>();
     private ItemStack item;
     private UUID seller;
     private UUID bidder;
@@ -240,7 +241,7 @@ public final class AuctionManager implements Listener {
             settlementReview = "DELIVERY_PENDING";
             if (!persist()) { settlementReview = ""; return; }
             if (!queueDelivery(seller, item, "auction-" + auctionTransactionId() + "-seller-return")) return;
-            recordHistory("No bids", 0.0);
+            recordHistory("No bids", 0.0, auctionTransactionId());
             Bukkit.broadcastMessage("§6ClasherBid §7Auction ended without bids; item queued for claim.");
         } else {
             UUID payee = payoutAccount();
@@ -278,7 +279,7 @@ public final class AuctionManager implements Listener {
             settlementReview = "PAYOUT_COMPLETED";
             if (!persist()) return;
             if (!queueDelivery(bidder, item, "auction-" + auctionTransactionId() + "-winner")) return;
-            recordHistory(bidderName, currentBid);
+            recordHistory(bidderName, currentBid, auctionTransactionId());
             Bukkit.broadcastMessage("§6§lAUCTION ENDED §e" + bidderName + " §7won §f"
                     + item.getType() + " §7for §a" + economy.format(currentBid) + "§7! Item queued for claim.");
         }
@@ -404,13 +405,33 @@ public final class AuctionManager implements Listener {
         return false;
     }
 
-    private void recordHistory(String winner, double amount) {
+    /** Records each auction once, even when settlement is retried after a crash. */
+    private void recordHistory(String winner, double amount, String transactionId) {
+        if (transactionId == null || !recordedHistoryTransactions.add(transactionId)) return;
         String entry = item.getType() + " | " + winner + " | " + economy.format(amount) + " | " + java.time.Instant.now();
         history.add(0, entry);
         while (history.size() > 25) history.remove(history.size() - 1);
         YamlConfiguration data = new YamlConfiguration();
         data.set("entries", history);
-        try { data.save(historyFile); } catch (IOException ex) { plugin.getLogger().log(Level.WARNING, "Could not save auction history", ex); }
+        data.set("transactions", new java.util.ArrayList<>(recordedHistoryTransactions));
+        File temp = new File(plugin.getDataFolder(), "auction-history.yml.tmp");
+        try {
+            data.save(temp);
+            try {
+                Files.move(temp.toPath(), historyFile.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            } catch (IOException atomicFailure) {
+                try {
+                    Files.move(temp.toPath(), historyFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                } catch (IOException fallbackFailure) {
+                    fallbackFailure.addSuppressed(atomicFailure);
+                    throw fallbackFailure;
+                }
+            }
+        } catch (IOException ex) {
+            recordedHistoryTransactions.remove(transactionId);
+            history.remove(entry);
+            plugin.getLogger().log(Level.WARNING, "Could not safely save auction history; settlement remains recoverable.", ex);
+        }
     }
 
     private UUID payoutAccount() {
@@ -583,6 +604,8 @@ public final class AuctionManager implements Listener {
             YamlConfiguration savedHistory = YamlConfiguration.loadConfiguration(historyFile);
             history.clear();
             history.addAll(savedHistory.getStringList("entries"));
+            recordedHistoryTransactions.clear();
+            recordedHistoryTransactions.addAll(savedHistory.getStringList("transactions"));
             while (history.size() > 25) history.remove(history.size() - 1);
         }
         if (!file.exists()) return;
