@@ -3,11 +3,18 @@ package network.clasherbid;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandExecutor;
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-import org.bukkit.event.*;
-import org.bukkit.event.inventory.*;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
-import org.bukkit.inventory.*;\nimport org.bukkit.command.Command;\nimport org.bukkit.command.CommandExecutor;\nimport org.bukkit.command.CommandSender;
+import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 
@@ -19,7 +26,7 @@ public final class AuctionGui implements Listener, CommandExecutor {
     private final ClasherBidPlugin plugin;
     private final AuctionManager auctions;
     private final NamespacedKey actionKey;
-    private final Set<UUID> awaitingCustom = new HashSet<>();\n    private final Map<UUID, Double> pendingConfirm = new HashMap<>();\n    private static final String CONFIRM_TITLE = "§8Confirm bid";
+    private final Set<UUID> awaitingCustom = new HashSet<>();
     private final Map<UUID, Double> pendingConfirm = new HashMap<>();
 
     AuctionGui(ClasherBidPlugin plugin, AuctionManager auctions) {
@@ -28,8 +35,12 @@ public final class AuctionGui implements Listener, CommandExecutor {
         this.actionKey = new NamespacedKey(plugin, "gui-action");
     }
 
-    @Override public boolean onCommand(CommandSender sender, org.bukkit.command.Command command, String label, String[] args) {
-        if (!(sender instanceof Player player)) { sender.sendMessage("Players only."); return true; }
+    @Override
+    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage("Players only.");
+            return true;
+        }
         open(player);
         return true;
     }
@@ -42,19 +53,31 @@ public final class AuctionGui implements Listener, CommandExecutor {
             ItemStack display = auctions.auctionItem();
             ItemMeta meta = display.getItemMeta();
             meta.setDisplayName("§6§lAuction Item");
-            meta.setLore(List.of(
+            List<String> lore = new ArrayList<>(List.of(
                     "§7Current bid: §a" + plugin.economy().format(auctions.currentBid()),
                     "§7Minimum next bid: §e" + plugin.economy().format(auctions.nextMinimum()),
                     "§7Highest bidder: §f" + (auctions.highestBidderName().isEmpty() ? "None" : auctions.highestBidderName()),
                     "§7Time remaining: §e" + auctions.secondsLeft() + "s", "",
-                    "§aChoose a bid amount below."));
+                    "§aChoose a bid amount below.", "", "§6Recent bids:"));
+            if (auctions.recentBids().isEmpty()) lore.add("§7No bids yet");
+            else auctions.recentBids().stream().limit(5).forEach(b -> lore.add("§7" + b));
+            meta.setLore(lore);
             display.setItemMeta(meta);
             gui.setItem(13, display);
+
             double balance = plugin.economy().getBalance(player);
-            gui.setItem(10, button(Material.EMERALD, "§aBid minimum", List.of("§7Amount: §e" + plugin.economy().format(auctions.nextMinimum()), "§7Balance: §e" + plugin.economy().format(balance)), "minimum"));
-            gui.setItem(11, button(Material.GOLD_INGOT, "§6Bid +$500", List.of("§7Amount: §e" + plugin.economy().format(auctions.currentBid() + 500), "§7Balance: §e" + plugin.economy().format(balance)), "plus500"));
-            gui.setItem(12, button(Material.DIAMOND, "§bBid +$1,000", List.of("§7Amount: §e" + plugin.economy().format(auctions.currentBid() + 1000), "§7Balance: §e" + plugin.economy().format(balance)), "plus1000"));
-            gui.setItem(14, button(Material.EMERALD_BLOCK, "§aBid +$5,000", List.of("§7Amount: §e" + plugin.economy().format(auctions.currentBid() + 5000), "§7Balance: §e" + plugin.economy().format(balance)), "plus5000"));
+            gui.setItem(10, button(Material.EMERALD, "§aBid minimum",
+                    List.of("§7Amount: §e" + plugin.economy().format(auctions.nextMinimum()),
+                            "§7Balance: §e" + plugin.economy().format(balance)), "minimum"));
+            gui.setItem(11, button(Material.GOLD_INGOT, "§6Bid +$500",
+                    List.of("§7Amount: §e" + plugin.economy().format(auctions.currentBid() + 500),
+                            "§7Balance: §e" + plugin.economy().format(balance)), "plus500"));
+            gui.setItem(12, button(Material.DIAMOND, "§bBid +$1,000",
+                    List.of("§7Amount: §e" + plugin.economy().format(auctions.currentBid() + 1000),
+                            "§7Balance: §e" + plugin.economy().format(balance)), "plus1000"));
+            gui.setItem(14, button(Material.EMERALD_BLOCK, "§aBid +$5,000",
+                    List.of("§7Amount: §e" + plugin.economy().format(auctions.currentBid() + 5000),
+                            "§7Balance: §e" + plugin.economy().format(balance)), "plus5000"));
             gui.setItem(15, button(Material.PAPER, "§eCustom bid", List.of("§7Enter amount in chat"), "custom"));
             gui.setItem(22, button(Material.CLOCK, "§eRefresh", List.of("§7Refresh auction details"), "refresh"));
         }
@@ -71,15 +94,18 @@ public final class AuctionGui implements Listener, CommandExecutor {
         return item;
     }
 
-    @EventHandler public void onClick(InventoryClickEvent event) {
+    @EventHandler
+    public void onClick(InventoryClickEvent event) {
         String title = event.getView().getTitle();
         if (!TITLE.equals(title) && !CONFIRM_TITLE.equals(title)) return;
         event.setCancelled(true);
-        if (!(event.getWhoClicked() instanceof Player player) || event.getClickedInventory() != event.getView().getTopInventory()) return;
+        if (!(event.getWhoClicked() instanceof Player player)
+                || event.getClickedInventory() != event.getView().getTopInventory()) return;
         ItemStack clicked = event.getCurrentItem();
         if (clicked == null || !clicked.hasItemMeta()) return;
         String action = clicked.getItemMeta().getPersistentDataContainer().get(actionKey, PersistentDataType.STRING);
         if (action == null) return;
+
         switch (action) {
             case "minimum" -> confirm(player, auctions.nextMinimum());
             case "plus500" -> confirm(player, auctions.currentBid() + 500);
@@ -90,20 +116,26 @@ public final class AuctionGui implements Listener, CommandExecutor {
                 player.closeInventory();
                 player.sendMessage("§6ClasherBid §7Enter your bid amount in chat, or type §ccancel§7.");
             }
-            case "refresh" -> open(player);\n            case "confirm" -> { Double amount = pendingConfirm.remove(player.getUniqueId()); if (amount != null) place(player, amount); }\n            case "back" -> { pendingConfirm.remove(player.getUniqueId()); open(player); }
+            case "refresh" -> open(player);
             case "confirm" -> {
                 Double amount = pendingConfirm.remove(player.getUniqueId());
                 if (amount != null) place(player, amount);
             }
-            case "back" -> { pendingConfirm.remove(player.getUniqueId()); open(player); }
+            case "back" -> {
+                pendingConfirm.remove(player.getUniqueId());
+                open(player);
+            }
         }
     }
 
-    @EventHandler public void onDrag(InventoryDragEvent event) {
-        if (TITLE.equals(event.getView().getTitle()) || CONFIRM_TITLE.equals(event.getView().getTitle())) event.setCancelled(true);
+    @EventHandler
+    public void onDrag(InventoryDragEvent event) {
+        if (TITLE.equals(event.getView().getTitle()) || CONFIRM_TITLE.equals(event.getView().getTitle()))
+            event.setCancelled(true);
     }
 
-    @EventHandler public void onChat(AsyncPlayerChatEvent event) {
+    @EventHandler
+    public void onChat(AsyncPlayerChatEvent event) {
         UUID id = event.getPlayer().getUniqueId();
         if (!awaitingCustom.remove(id)) return;
         event.setCancelled(true);
@@ -113,8 +145,9 @@ public final class AuctionGui implements Listener, CommandExecutor {
             return;
         }
         double amount;
-        try { amount = Double.parseDouble(input.replace(",", "")); }
-        catch (NumberFormatException ex) {
+        try {
+            amount = Double.parseDouble(input.replace(",", ""));
+        } catch (NumberFormatException ex) {
             Bukkit.getScheduler().runTask(plugin, () -> event.getPlayer().sendMessage("§cInvalid amount. Reopen /bid and try again."));
             return;
         }
@@ -124,24 +157,25 @@ public final class AuctionGui implements Listener, CommandExecutor {
 
     private void confirm(Player player, double amount) {
         if (!Double.isFinite(amount) || amount <= 0 || amount > plugin.economy().getBalance(player)) {
-            player.sendMessage("§cThat bid is higher than your available balance.");
+            player.sendMessage("§cBid amount exceeds your balance or is invalid.");
             open(player);
             return;
         }
         pendingConfirm.put(player.getUniqueId(), amount);
-        Inventory confirm = Bukkit.createInventory(null, 9, CONFIRM_TITLE);
-        confirm.setItem(3, button(Material.GOLD_INGOT, "§eConfirm bid §a" + plugin.economy().format(amount),
-                List.of("§7Funds will be held until outbid or auction end."), "confirm"));
-        confirm.setItem(5, button(Material.BARRIER, "§cCancel", List.of(), "back"));
-        player.openInventory(confirm);
+        Inventory inv = Bukkit.createInventory(null, 9, CONFIRM_TITLE);
+        inv.setItem(3, button(Material.GOLD_INGOT, "§eConfirm " + plugin.economy().format(amount),
+                List.of("§7Funds will be escrowed if accepted."), "confirm"));
+        inv.setItem(5, button(Material.BARRIER, "§cCancel", List.of(), "back"));
+        player.openInventory(inv);
     }
 
-    private void confirm(Player player, double amount) {\n        if (!Double.isFinite(amount) || amount <= 0 || amount > plugin.economy().getBalance(player)) { player.sendMessage("§cBid amount exceeds your balance or is invalid."); open(player); return; }\n        pendingConfirm.put(player.getUniqueId(), amount);\n        Inventory inv = Bukkit.createInventory(null, 9, CONFIRM_TITLE);\n        inv.setItem(3, button(Material.GOLD_INGOT, "§eConfirm " + plugin.economy().format(amount), List.of("§7Funds will be escrowed if accepted."), "confirm"));\n        inv.setItem(5, button(Material.BARRIER, "§cCancel", List.of(), "back"));\n        player.openInventory(inv);\n    }\n\n    private void place(Player player, double amount) {
+    private void place(Player player, double amount) {
         player.sendMessage(auctions.placeBid(player, amount));
         open(player);
     }
 
-    @EventHandler public void onJoin(org.bukkit.event.player.PlayerJoinEvent event) {
+    @EventHandler
+    public void onJoin(PlayerJoinEvent event) {
         auctions.claim(event.getPlayer());
     }
 }
