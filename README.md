@@ -18,6 +18,7 @@ GUI-based single-item auction plugin for Clasher Network.
 - `/clasherbid cancel` — cancel and refund
 - `/clasherbid status` — show current auction state
 - `/clasherbid history` — recent auction history\n- `/clasherbid recover <player>` — recover a recorded failed refund (admin only)
+- `/clasherbid settlement` — inspect a frozen payout for manual review (admin only)
 
 Requires `clasherbid.admin` (default: op).
 
@@ -45,3 +46,9 @@ Vault economy transactions and plugin YAML persistence are not a single atomic t
 - Test offline winner delivery and inventory-full handling.
 
 If a crash occurs during settlement, check the economy balance, active-auction state, pending deliveries, and refund-recovery config before manually retrying a payment. Avoid blindly issuing a second payout.
+
+## Settlement review
+
+When an auction payout enters the Vault transaction window, ClasherBid writes a persistent `settlementReview` marker before attempting the deposit. If the server crashes in this uncertain window, the auction is frozen on startup rather than automatically paying again. Admins can inspect the frozen auction with `/clasherbid settlement`.
+
+This is a conservative safety hold—not a complete automated reconciliation system. Verify the Vault economy balance, seller payout, and item delivery before taking manual action. Do not blindly retry a payout. Frozen settlement recovery is intentionally manual at this stage.
