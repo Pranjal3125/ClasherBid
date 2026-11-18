@@ -16,6 +16,14 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
 
     @Override public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!sender.hasPermission("clasherbid.admin")) { sender.sendMessage("§cNo permission."); return true; }
+        if (args.length == 2 && args[0].equalsIgnoreCase("recover")) {
+            org.bukkit.OfflinePlayer target = plugin.getServer().getOfflinePlayer(args[1]);
+            double amount = auctions.pendingRefund(target.getUniqueId());
+            if (amount <= 0) sender.sendMessage("§cNo pending refund for that player.");
+            else if (auctions.recoverRefund(target.getUniqueId())) sender.sendMessage("§aRecovered " + plugin.economy().format(amount) + " for " + target.getName() + ".");
+            else sender.sendMessage("§cRefund recovery failed. The pending amount remains saved.");
+            return true;
+        }
         if (args.length == 1 && args[0].equalsIgnoreCase("cancel")) {
             if (!auctions.isActive()) sender.sendMessage("§cNo active auction.");
             else { auctions.cancel(); sender.sendMessage("§aAuction cancelled."); }
@@ -52,14 +60,16 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage("§e/clasherbid cancel");
         sender.sendMessage("§e/clasherbid status");
         sender.sendMessage("§e/clasherbid history");
+        sender.sendMessage("§e/clasherbid recover <player>");
         return true;
     }
 
     @Override public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (!sender.hasPermission("clasherbid.admin")) return List.of();
-        if (args.length == 1) return List.of("start", "cancel", "status", "history").stream()
+        if (args.length == 1) return List.of("start", "cancel", "status", "history", "recover").stream()
                 .filter(s -> s.startsWith(args[0].toLowerCase(Locale.ROOT))).collect(Collectors.toList());
         if (args.length == 2 && args[0].equalsIgnoreCase("start")) return List.of("5", "10", "15", "30");
+        if (args.length == 2 && args[0].equalsIgnoreCase("recover")) return plugin.getServer().getOnlinePlayers().stream().map(Player::getName).toList();
         if (args.length == 3 && args[0].equalsIgnoreCase("start")) return List.of("100", "500", "1000", "5000");
         return List.of();
     }
