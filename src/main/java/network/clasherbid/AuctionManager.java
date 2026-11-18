@@ -178,6 +178,20 @@ public final class AuctionManager implements Listener {
         }
     }
 
+    public double pendingRefund(UUID playerId) {
+        return plugin.getConfig().getDouble("recovery.refund." + playerId, 0.0);
+    }
+
+    public boolean recoverRefund(UUID playerId) {
+        double amount = pendingRefund(playerId);
+        if (!Double.isFinite(amount) || amount <= 0) return false;
+        EconomyResponse response = economy.depositPlayer(Bukkit.getOfflinePlayer(playerId), amount);
+        if (!response.transactionSuccess()) return false;
+        plugin.getConfig().set("recovery.refund." + playerId, null);
+        plugin.saveConfig();
+        return true;
+    }
+
     private void deliver(UUID playerId, ItemStack stack) {
         if (playerId == null || stack == null) return;
         Player online = Bukkit.getPlayer(playerId);
