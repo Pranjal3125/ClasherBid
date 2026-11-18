@@ -50,6 +50,9 @@ public final class AuctionGui implements Listener, CommandExecutor {
         Inventory gui = Bukkit.createInventory(null, 27, TITLE);
         if (!auctions.isActive()) {
             gui.setItem(13, button(Material.BARRIER, "§cNo active auction", List.of("§7Check again later."), "none"));
+        } else if (!auctions.settlementReview().isEmpty()) {
+            gui.setItem(13, button(Material.BARRIER, "§cAuction frozen for review",
+                    List.of("§7Bidding is temporarily disabled."), "none"));
         } else {
             gui.setItem(13, auctionDisplay());
 
@@ -96,6 +99,12 @@ public final class AuctionGui implements Listener, CommandExecutor {
                 Inventory top = player.getOpenInventory().getTopInventory();
                 if (!auctions.isActive()) {
                     top.setItem(13, button(Material.BARRIER, "§cNo active auction", List.of("§7Check again later."), "none"));
+                    for (int slot : new int[]{10, 11, 12, 14, 15, 22}) top.setItem(slot, null);
+                    continue;
+                }
+                if (!auctions.settlementReview().isEmpty()) {
+                    top.setItem(13, button(Material.BARRIER, "§cAuction frozen for review",
+                            List.of("§7Bidding is temporarily disabled."), "none"));
                     for (int slot : new int[]{10, 11, 12, 14, 15, 22}) top.setItem(slot, null);
                     continue;
                 }
