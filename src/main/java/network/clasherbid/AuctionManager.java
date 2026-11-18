@@ -67,6 +67,7 @@ public final class AuctionManager implements Listener {
         currentBid = openingBid;
         escrow = 0;
         endsAt = System.currentTimeMillis() + durationSeconds * 1000L;
+        settlementReview = "";
         active = true;
         persist();
         schedule();
@@ -236,6 +237,7 @@ public final class AuctionManager implements Listener {
         currentBid = 0;
         escrow = 0;
         endsAt = 0;
+        settlementReview = "";
         persist();
     }
 
