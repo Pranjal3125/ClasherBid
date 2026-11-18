@@ -7,7 +7,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.*;
 import org.bukkit.event.inventory.*;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
-import org.bukkit.inventory.*;
+import org.bukkit.inventory.*;\nimport org.bukkit.command.Command;\nimport org.bukkit.command.CommandExecutor;\nimport org.bukkit.command.CommandSender;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 
@@ -19,7 +19,7 @@ public final class AuctionGui implements Listener, CommandExecutor {
     private final ClasherBidPlugin plugin;
     private final AuctionManager auctions;
     private final NamespacedKey actionKey;
-    private final Set<UUID> awaitingCustom = new HashSet<>();
+    private final Set<UUID> awaitingCustom = new HashSet<>();\n    private final Map<UUID, Double> pendingConfirm = new HashMap<>();\n    private static final String CONFIRM_TITLE = "§8Confirm bid";
     private final Map<UUID, Double> pendingConfirm = new HashMap<>();
 
     AuctionGui(ClasherBidPlugin plugin, AuctionManager auctions) {
@@ -90,7 +90,7 @@ public final class AuctionGui implements Listener, CommandExecutor {
                 player.closeInventory();
                 player.sendMessage("§6ClasherBid §7Enter your bid amount in chat, or type §ccancel§7.");
             }
-            case "refresh" -> open(player);
+            case "refresh" -> open(player);\n            case "confirm" -> { Double amount = pendingConfirm.remove(player.getUniqueId()); if (amount != null) place(player, amount); }\n            case "back" -> { pendingConfirm.remove(player.getUniqueId()); open(player); }
             case "confirm" -> {
                 Double amount = pendingConfirm.remove(player.getUniqueId());
                 if (amount != null) place(player, amount);
@@ -136,7 +136,7 @@ public final class AuctionGui implements Listener, CommandExecutor {
         player.openInventory(confirm);
     }
 
-    private void place(Player player, double amount) {
+    private void confirm(Player player, double amount) {\n        if (!Double.isFinite(amount) || amount <= 0 || amount > plugin.economy().getBalance(player)) { player.sendMessage("§cBid amount exceeds your balance or is invalid."); open(player); return; }\n        pendingConfirm.put(player.getUniqueId(), amount);\n        Inventory inv = Bukkit.createInventory(null, 9, CONFIRM_TITLE);\n        inv.setItem(3, button(Material.GOLD_INGOT, "§eConfirm " + plugin.economy().format(amount), List.of("§7Funds will be escrowed if accepted."), "confirm"));\n        inv.setItem(5, button(Material.BARRIER, "§cCancel", List.of(), "back"));\n        player.openInventory(inv);\n    }\n\n    private void place(Player player, double amount) {
         player.sendMessage(auctions.placeBid(player, amount));
         open(player);
     }
