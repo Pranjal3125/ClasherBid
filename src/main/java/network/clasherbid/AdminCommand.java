@@ -16,6 +16,18 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
 
     @Override public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!sender.hasPermission("clasherbid.admin")) { sender.sendMessage("§cNo permission."); return true; }
+        if (args.length == 3 && args[0].equalsIgnoreCase("bid-review")) {
+            if (args[2].equalsIgnoreCase("paid")) {
+                if (auctions.resolveBidReview(true))
+                    sender.sendMessage("§aInterrupted bid marked paid and accepted. Previous bidder refund is queued for guarded recovery.");
+                else sender.sendMessage("§cNo resolvable pending bid, or it was already accepted. Inspect /clasherbid status.");
+            } else if (args[2].equalsIgnoreCase("unpaid")) {
+                if (auctions.resolveBidReview(false))
+                    sender.sendMessage("§eInterrupted bid marked unpaid; pending bid discarded.");
+                else sender.sendMessage("§cNo resolvable pending bid, or payment may already have been accepted.");
+            } else sender.sendMessage("§cUsage: /clasherbid bid-review <paid|unpaid>");
+            return true;
+        }
         if (args.length == 3 && args[0].equalsIgnoreCase("refund-review")) {
             org.bukkit.OfflinePlayer target = plugin.getServer().getOfflinePlayer(args[1]);
             if (args[2].equalsIgnoreCase("paid")) {
@@ -98,6 +110,7 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage("§e/clasherbid history");
         sender.sendMessage("§e/clasherbid recover <player>");
         sender.sendMessage("§e/clasherbid refund-review <player> <paid|unpaid>");
+        sender.sendMessage("§e/clasherbid bid-review <paid|unpaid>");
         sender.sendMessage("§e/clasherbid settlement");
         sender.sendMessage("§e/clasherbid settlement <paid|unpaid>");
         return true;
@@ -105,10 +118,11 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
 
     @Override public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (!sender.hasPermission("clasherbid.admin")) return List.of();
-        if (args.length == 1) return List.of("start", "cancel", "status", "history", "recover", "refund-review", "settlement").stream()
+        if (args.length == 1) return List.of("start", "cancel", "status", "history", "recover", "refund-review", "bid-review", "settlement").stream()
                 .filter(s -> s.startsWith(args[0].toLowerCase(Locale.ROOT))).collect(Collectors.toList());
         if (args.length == 2 && args[0].equalsIgnoreCase("start")) return List.of("1", "5", "10", "15", "30", "60", "120");
         if (args.length == 2 && args[0].equalsIgnoreCase("settlement")) return List.of("paid", "unpaid");
+        if (args.length == 2 && args[0].equalsIgnoreCase("bid-review")) return List.of("paid", "unpaid");
         if (args.length == 2 && (args[0].equalsIgnoreCase("recover") || args[0].equalsIgnoreCase("refund-review"))) return plugin.getServer().getOnlinePlayers().stream().map(Player::getName).toList();
         if (args.length == 3 && args[0].equalsIgnoreCase("refund-review")) return List.of("paid", "unpaid");
         if (args.length == 3 && args[0].equalsIgnoreCase("start")) return List.of("100", "500", "1000", "5000");
