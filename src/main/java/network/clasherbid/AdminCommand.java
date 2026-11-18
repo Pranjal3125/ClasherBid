@@ -24,6 +24,16 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
             else sender.sendMessage("§cRefund recovery failed. The pending amount remains saved.");
             return true;
         }
+        if (args.length == 2 && args[0].equalsIgnoreCase("settlement")) {
+            if (args[1].equalsIgnoreCase("paid")) {
+                if (auctions.resolveSettlementPaid()) sender.sendMessage("§aConfirmed paid: item delivery finalized. No second payout was made.");
+                else sender.sendMessage("§cNo frozen settlement could be resolved.");
+            } else if (args[1].equalsIgnoreCase("unpaid")) {
+                if (auctions.resolveSettlementUnpaid()) sender.sendMessage("§eConfirmed unpaid: item returned; bidder refund attempted (check refund recovery if needed).");
+                else sender.sendMessage("§cNo frozen settlement could be resolved.");
+            } else sender.sendMessage("§cUsage: /clasherbid settlement <paid|unpaid>");
+            return true;
+        }
         if (args.length == 1 && args[0].equalsIgnoreCase("settlement")) {
             if (auctions.settlementReview().isEmpty()) sender.sendMessage("§aNo settlement is frozen for review.");
             else sender.sendMessage("§cSettlement review required: §e" + auctions.settlementReview()
@@ -72,7 +82,7 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage("§e/clasherbid status");
         sender.sendMessage("§e/clasherbid history");
         sender.sendMessage("§e/clasherbid recover <player>");
-        sender.sendMessage("§e/clasherbid settlement");
+        sender.sendMessage("§e/clasherbid settlement");\n        sender.sendMessage("§e/clasherbid settlement <paid|unpaid>");
         return true;
     }
 
@@ -80,7 +90,7 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
         if (!sender.hasPermission("clasherbid.admin")) return List.of();
         if (args.length == 1) return List.of("start", "cancel", "status", "history", "recover", "settlement").stream()
                 .filter(s -> s.startsWith(args[0].toLowerCase(Locale.ROOT))).collect(Collectors.toList());
-        if (args.length == 2 && args[0].equalsIgnoreCase("start")) return List.of("1", "5", "10", "15", "30", "60", "120");
+        if (args.length == 2 && args[0].equalsIgnoreCase("start")) return List.of("1", "5", "10", "15", "30", "60", "120");\n        if (args.length == 2 && args[0].equalsIgnoreCase("settlement")) return List.of("paid", "unpaid");
         if (args.length == 2 && args[0].equalsIgnoreCase("recover")) return plugin.getServer().getOnlinePlayers().stream().map(Player::getName).toList();
         if (args.length == 3 && args[0].equalsIgnoreCase("start")) return List.of("100", "500", "1000", "5000");
         return List.of();
