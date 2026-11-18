@@ -432,7 +432,9 @@ public final class AuctionManager implements Listener {
             recordedHistoryTransactions.remove(transactionId);
             history.remove(entry);
             plugin.getLogger().log(Level.WARNING, "Could not safely save auction history; settlement remains recoverable.", ex);
+            return false;
         }
+        return true;
     }
 
     private UUID payoutAccount() {
