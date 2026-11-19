@@ -893,12 +893,15 @@ public final class AuctionManager implements Listener {
                 || (settlementReview.equals("BID_PENDING") && (pendingBidder == null
                     || !Double.isFinite(pendingBidAmount) || pendingBidAmount <= 0))
                 || (settlementReview.equals("BID_PENDING_ACCEPTED") && pendingBidder != null));
-        if (invalidCoreState || invalidPendingBid) {
+        boolean orphanedIntent = settlementReview.isEmpty()
+                && (pendingBidder != null || pendingBidAmount != 0.0 || !pendingBidderName.isEmpty()
+                    || pendingRefundPlayer != null);
+        if (invalidCoreState || invalidPendingBid || orphanedIntent) {
             recoveryBlocked = true;
             settlementReview = "AUCTION_DATA_CORRUPT";
             plugin.getLogger().severe("Saved auction data failed integrity checks. Auction frozen; inspect active-auction.yml and economy balances before recovery.");
         }
-        if (active && migratedAuctionId && !invalidCoreState && !invalidPendingBid && !persist()) {
+        if (active && migratedAuctionId && !invalidCoreState && !invalidPendingBid && !orphanedIntent && !persist()) {
             recoveryBlocked = true;
             plugin.getLogger().severe("Legacy auction ID migration could not be persisted; original file is preserved and command-based settlement is disabled.");
         }
