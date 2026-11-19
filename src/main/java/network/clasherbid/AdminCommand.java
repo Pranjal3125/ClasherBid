@@ -102,6 +102,7 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
                     + " §7| Auction: §f" + (auctions.auctionItem() == null ? "unknown" : auctions.auctionItem().getType())
                     + " §7| Winner: §e" + auctions.highestBidderName()
                     + " §7| Amount: §a" + plugin.economy().format(auctions.currentBid())
+                    + " §7| Pending bid: §f" + (auctions.bidReviewInfo().isEmpty() ? "None" : auctions.bidReviewInfo())
                     + " §7— verify balances and item delivery before any manual action.");
             return true;
         }
