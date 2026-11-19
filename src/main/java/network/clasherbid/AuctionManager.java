@@ -717,12 +717,13 @@ public final class AuctionManager implements Listener {
         }
 
         java.util.List<ItemStack> remaining = new java.util.ArrayList<>();
-        int delivered = 0;
+        int deliveredAmount = 0;
         for (ItemStack stack : pending) {
             if (stack == null || stack.getType().isAir()) continue;
             java.util.Map<Integer, ItemStack> overflow = player.getInventory().addItem(stack.clone());
-            if (overflow.isEmpty()) delivered++;
-            else remaining.addAll(overflow.values());
+            int overflowAmount = overflow.values().stream().mapToInt(ItemStack::getAmount).sum();
+            deliveredAmount += stack.getAmount() - overflowAmount;
+            if (!overflow.isEmpty()) remaining.addAll(overflow.values());
         }
         plugin.getConfig().set(path, remaining.isEmpty() ? null : remaining);
         plugin.getConfig().set(reviewPath, null);
@@ -732,7 +733,7 @@ public final class AuctionManager implements Listener {
             player.sendMessage("§eDelivery was attempted but its final state could not be saved. Claim is frozen for admin review; do not retry.");
             return;
         }
-        if (delivered > 0) player.sendMessage("§aDelivered " + delivered + " pending auction item(s).");
+        if (deliveredAmount > 0) player.sendMessage("§aDelivered " + deliveredAmount + " pending auction item(s).");
         if (!remaining.isEmpty()) player.sendMessage("§eInventory full. Remaining items will be kept for later.");
     }
 
