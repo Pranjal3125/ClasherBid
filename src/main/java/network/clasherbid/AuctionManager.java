@@ -839,11 +839,11 @@ public final class AuctionManager implements Listener {
         }
 
         java.util.List<ItemStack> remaining = new java.util.ArrayList<>();
-        int deliveredAmount = 0;
+        long deliveredAmount = 0;
         for (ItemStack stack : pending) {
             if (stack == null || stack.getType().isAir()) continue;
             java.util.Map<Integer, ItemStack> overflow = player.getInventory().addItem(stack.clone());
-            int overflowAmount = overflow.values().stream().mapToInt(ItemStack::getAmount).sum();
+            long overflowAmount = overflow.values().stream().mapToLong(ItemStack::getAmount).sum();
             deliveredAmount += stack.getAmount() - overflowAmount;
             if (!overflow.isEmpty()) remaining.addAll(overflow.values());
         }
