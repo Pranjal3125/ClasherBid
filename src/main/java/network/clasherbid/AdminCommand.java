@@ -16,12 +16,12 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
 
     @Override public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!sender.hasPermission("clasherbid.admin")) { sender.sendMessage("§cNo permission."); return true; }
-        if (args.length == 3 && args[0].equalsIgnoreCase("bid-review")) {
-            if (args[2].equalsIgnoreCase("paid")) {
+        if (args.length == 2 && args[0].equalsIgnoreCase("bid-review")) {
+            if (args[1].equalsIgnoreCase("paid")) {
                 if (auctions.resolveBidReview(true))
                     sender.sendMessage("§aInterrupted bid marked paid and accepted. Previous bidder refund is queued for guarded recovery.");
                 else sender.sendMessage("§cNo resolvable pending bid, or it was already accepted. Inspect /clasherbid status.");
-            } else if (args[2].equalsIgnoreCase("unpaid")) {
+            } else if (args[1].equalsIgnoreCase("unpaid")) {
                 if (auctions.resolveBidReview(false))
                     sender.sendMessage("§eInterrupted bid marked unpaid; pending bid discarded.");
                 else sender.sendMessage("§cNo resolvable pending bid, or payment may already have been accepted.");
@@ -64,11 +64,11 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
             else sender.sendMessage("§cRefund recovery failed or is now frozen for manual review. Do not retry blindly.");
             return true;
         }
-        if (args.length == 3 && args[0].equalsIgnoreCase("start-review")) {
-            if (args[2].equalsIgnoreCase("item-removed")) {
+        if (args.length == 2 && args[0].equalsIgnoreCase("start-review")) {
+            if (args[1].equalsIgnoreCase("item-removed")) {
                 if (auctions.resolveStartReview(true)) sender.sendMessage("§aStart review resolved: verified item removed; auction active.");
                 else sender.sendMessage("§cNo start review pending, or save failed.");
-            } else if (args[2].equalsIgnoreCase("item-still-held")) {
+            } else if (args[1].equalsIgnoreCase("item-still-held")) {
                 if (auctions.resolveStartReview(false)) sender.sendMessage("§eStart review resolved: verified item still held; auction cleared.");
                 else sender.sendMessage("§cNo start review pending, or save failed.");
             } else sender.sendMessage("§cUsage: /clasherbid start-review <item-removed|item-still-held>");
