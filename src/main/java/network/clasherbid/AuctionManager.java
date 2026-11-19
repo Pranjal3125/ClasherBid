@@ -779,6 +779,23 @@ public final class AuctionManager implements Listener {
         }
         if (pending.isEmpty()) return;
 
+        // Conservative preflight: require enough empty storage slots for every stack
+        // so a full inventory cannot cause a partial claim during normal operation.
+        int emptySlots = 0;
+        for (ItemStack content : player.getInventory().getStorageContents()) {
+            if (content == null || content.getType().isAir()) emptySlots++;
+        }
+        long requiredSlots = 0;
+        for (ItemStack stack : pending) {
+            int maxStack = Math.max(1, stack.getMaxStackSize());
+            requiredSlots += (stack.getAmount() + (long) maxStack - 1L) / maxStack;
+        }
+        if (emptySlots < requiredSlots) {
+            player.sendMessage("§eAuction delivery paused: free at least " + (requiredSlots - emptySlots)
+                    + " more storage slot(s), then rejoin to claim your items.");
+            return;
+        }
+
         // Persist a claim intent before inventory changes. A crash in the delivery
         // window freezes this claim for manual reconciliation instead of blind retry.
         String previousReview = plugin.getConfig().getString(reviewPath, "");
