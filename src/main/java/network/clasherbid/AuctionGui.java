@@ -83,7 +83,8 @@ public final class AuctionGui implements Listener, CommandExecutor {
         ItemMeta meta = display.getItemMeta();
         meta.setDisplayName("§6§lAuction Item");
         List<String> lore = new ArrayList<>(List.of(
-                "§7Current bid: §a" + plugin.economy().format(auctions.currentBid()),
+                "§7" + (auctions.highestBidder() == null ? "Starting price: §a" : "Current bid: §a")
+                        + plugin.economy().format(auctions.currentBid()),
                 "§7Minimum next bid: §e" + plugin.economy().format(auctions.nextMinimum()),
                 "§7Highest bidder: §f" + (auctions.highestBidderName().isEmpty() ? "None" : auctions.highestBidderName()),
                 "§7Time remaining: §e" + auctions.secondsLeft() + "s", "",
