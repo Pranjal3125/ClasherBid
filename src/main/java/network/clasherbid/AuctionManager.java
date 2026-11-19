@@ -404,7 +404,9 @@ public final class AuctionManager implements Listener {
     }
 
     public boolean resolveSettlementPaid() {
-        if (!active || settlementReview.isEmpty() || settlementReview.startsWith("BID_PENDING") || settlementReview.equals("CANCEL_PENDING") || bidder == null || item == null) return false;
+        if (!active || settlementReview.isEmpty() || settlementReview.startsWith("BID_PENDING")
+                || settlementReview.equals("CANCEL_PENDING") || settlementReview.equals("AUCTION_DATA_CORRUPT")
+                || bidder == null || item == null) return false;
         if (!queueDelivery(bidder, item, "auction-" + auctionTransactionId() + "-winner")) return false;
         if (!recordHistory(bidderName, currentBid, auctionTransactionId())) return false;
         Bukkit.broadcastMessage("§6ClasherBid §eSettlement manually confirmed paid by admin. Winner item queued for claim.");
@@ -412,7 +414,9 @@ public final class AuctionManager implements Listener {
     }
 
     public boolean resolveSettlementUnpaid() {
-        if (!active || settlementReview.isEmpty() || settlementReview.startsWith("BID_PENDING") || settlementReview.equals("START_PENDING") || item == null || seller == null) return false;
+        if (!active || settlementReview.isEmpty() || settlementReview.startsWith("BID_PENDING")
+                || settlementReview.equals("START_PENDING") || settlementReview.equals("PAYOUT_COMPLETED")
+                || settlementReview.equals("AUCTION_DATA_CORRUPT") || item == null || seller == null) return false;
         if (bidder != null && escrow > 0) {
             // Persist an unpaid refund liability instead of depositing immediately.
             // The guarded recovery command will require review before any payment.
