@@ -673,7 +673,11 @@ public final class AuctionManager implements Listener {
         if (response == null || !response.transactionSuccess()) return false; // keep marker for manual review
         plugin.getConfig().set("recovery.refund." + playerId, null);
         plugin.getConfig().set("recovery.refund-review." + playerId, null);
-        if (persistConfig()) return true;
+        if (persistConfig()) {
+            Player recipient = Bukkit.getPlayer(playerId);
+            if (recipient != null) recipient.sendMessage("§aYour auction refund of §e" + economy.format(amount) + " §ahas been credited.");
+            return true;
+        }
         plugin.getConfig().set("recovery.refund." + playerId, amount);
         plugin.getConfig().set("recovery.refund-review." + playerId, "REFUND_PENDING");
         return false;
