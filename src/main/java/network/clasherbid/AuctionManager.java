@@ -724,8 +724,8 @@ public final class AuctionManager implements Listener {
         if (!persist()) {
             active = true; item = oldItem; seller = oldSeller; bidder = oldBidder;
             bidderName = oldName; currentBid = oldBid; escrow = oldEscrow; endsAt = oldEndsAt;
-            settlementReview = "DELIVERY_PENDING";
-            plugin.getLogger().severe("Delivery queued but auction clear failed; auction frozen for admin review.");
+            settlementReview = oldReview;
+            plugin.getLogger().severe("Delivery queued but auction clear failed; original settlement state restored for admin review.");
             return false;
         }
         if (timer != null) timer.cancel();
