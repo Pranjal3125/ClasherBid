@@ -108,7 +108,7 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
                     + " §7| Winner: §e" + auctions.highestBidderName()
                     + " §7| Amount: §a" + plugin.economy().format(auctions.currentBid())
                     + " §7| Pending bid: §f" + (auctions.bidReviewInfo().isEmpty() ? "None" : auctions.bidReviewInfo())
-                    + " §7— verify balances and item delivery before any manual action.");
+                    + (auctions.isRecoveryBlocked() ? " §c| File-level recovery required; commands are disabled." : " §7— verify balances and item delivery before any manual action."));
             return true;
         }
         if (args.length == 1 && args[0].equalsIgnoreCase("cancel")) {
