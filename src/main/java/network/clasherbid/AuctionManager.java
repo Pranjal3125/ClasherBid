@@ -581,7 +581,7 @@ public final class AuctionManager implements Listener {
         if (transactionId == null) return false;
         if (!recordedHistoryTransactions.add(transactionId)) return true;
         java.util.List<String> previousHistory = new java.util.ArrayList<>(history);
-        String entry = item.getType() + " | " + winner + " | " + economy.format(amount) + " | " + java.time.Instant.now();
+        String entry = item.getAmount() + "x " + item.getType() + " | " + winner + " | " + economy.format(amount) + " | " + java.time.Instant.now();
         history.add(0, entry);
         while (history.size() > 25) history.remove(history.size() - 1);
         YamlConfiguration data = new YamlConfiguration();
