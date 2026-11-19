@@ -55,6 +55,7 @@ public final class AuctionManager implements Listener {
     }
 
     public boolean isActive() { return active; }
+    public boolean isRecoveryBlocked() { return recoveryBlocked; }
     public String settlementReview() { return settlementReview; }
     public ItemStack auctionItem() { return item == null ? null : item.clone(); }
     public double currentBid() { return currentBid; }
