@@ -320,6 +320,7 @@ public final class AuctionManager implements Listener {
             settlementReview = "DELIVERY_PENDING";
             if (!persist()) { settlementReview = ""; return; }
             if (!queueDelivery(seller, item, "auction-" + auctionTransactionId() + "-seller-return")) return;
+            claimIfOnline(seller);
             if (!recordHistory("No bids", 0.0, auctionTransactionId())) return;
             Bukkit.broadcastMessage("§6ClasherBid §7Auction ended without bids; item queued for claim.");
         } else {
@@ -372,6 +373,7 @@ public final class AuctionManager implements Listener {
             settlementReview = "PAYOUT_COMPLETED";
             if (!persist()) return;
             if (!queueDelivery(bidder, item, "auction-" + auctionTransactionId() + "-winner")) return;
+            claimIfOnline(bidder);
             if (!recordHistory(bidderName, currentBid, auctionTransactionId())) return;
             Bukkit.broadcastMessage("§6§lAUCTION ENDED §e" + bidderName + " §7won §f"
                     + item.getType() + " §7for §a" + economy.format(currentBid) + "§7! Item queued for claim.");
@@ -528,6 +530,7 @@ public final class AuctionManager implements Listener {
             }
         }
         if (!queueDelivery(bidder, item, "auction-" + auctionTransactionId() + "-winner")) return false;
+        claimIfOnline(bidder);
         if (!recordHistory(bidderName, currentBid, auctionTransactionId())) return false;
         Bukkit.broadcastMessage("§6ClasherBid §eSettlement manually confirmed paid by admin. Winner item queued for claim.");
         return clear();
@@ -556,6 +559,7 @@ public final class AuctionManager implements Listener {
             }
         }
         if (!queueDelivery(seller, item, "auction-" + auctionTransactionId() + "-seller-return")) return false;
+        claimIfOnline(seller);
         if (bidder == null && !recordHistory("No bids", 0.0, auctionTransactionId())) return false;
         Bukkit.broadcastMessage("§6ClasherBid §eSettlement manually confirmed unpaid by admin. Auction item queued for claim.");
         return clear();
@@ -760,6 +764,11 @@ public final class AuctionManager implements Listener {
         plugin.getConfig().set(reviewPath, previousReview);
         if (delivered) plugin.getConfig().set(deliveryPath, previousDelivery);
         return false;
+    }
+
+    private void claimIfOnline(UUID playerId) {
+        Player recipient = playerId == null ? null : Bukkit.getPlayer(playerId);
+        if (recipient != null) claim(recipient);
     }
 
     public void claim(Player player) {
