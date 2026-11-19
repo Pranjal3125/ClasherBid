@@ -886,8 +886,8 @@ public final class AuctionManager implements Listener {
                 || !Double.isFinite(escrow) || escrow < 0 || endsAt <= 0
                 || (bidder == null && escrow > 0)
                 || (bidder != null && (escrow <= 0 || Math.abs(escrow - currentBid) > 0.000001))
-                || ((pendingRefundPlayer == null) != (pendingRefundAmount <= 0))
-                || (pendingRefundPlayer != null && !Double.isFinite(pendingRefundAmount));
+                || (pendingRefundPlayer == null && pendingRefundAmount != 0.0)
+                || (pendingRefundPlayer != null && (!Double.isFinite(pendingRefundAmount) || pendingRefundAmount <= 0));
         boolean invalidPendingBid = settlementReview.startsWith("BID_PENDING")
                 && (pendingBidTransactionId == null
                 || (settlementReview.equals("BID_PENDING") && (pendingBidder == null
