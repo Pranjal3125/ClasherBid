@@ -509,6 +509,7 @@ public final class AuctionManager implements Listener {
             }
         }
         if (!queueDelivery(seller, item, "auction-" + auctionTransactionId() + "-seller-return")) return false;
+        if (bidder == null && !recordHistory("No bids", 0.0, auctionTransactionId())) return false;
         Bukkit.broadcastMessage("§6ClasherBid §eSettlement manually confirmed unpaid by admin. Auction item queued for claim.");
         return clear();
     }
