@@ -30,6 +30,10 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
         }
         if (args.length == 3 && args[0].equalsIgnoreCase("claim-review")) {
             org.bukkit.OfflinePlayer target = plugin.getServer().getOfflinePlayer(args[1]);
+            if (!target.isOnline() && !target.hasPlayedBefore()) {
+                sender.sendMessage("§cUnknown player. Use a player who has joined this server.");
+                return true;
+            }
             if (args[2].equalsIgnoreCase("delivered")) {
                 if (auctions.resolveClaimReview(target.getUniqueId(), true))
                     sender.sendMessage("§aClaim marked delivered; pending item record cleared after inventory verification.");
@@ -43,6 +47,10 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
         }
         if (args.length == 3 && args[0].equalsIgnoreCase("refund-review")) {
             org.bukkit.OfflinePlayer target = plugin.getServer().getOfflinePlayer(args[1]);
+            if (!target.isOnline() && !target.hasPlayedBefore()) {
+                sender.sendMessage("§cUnknown player. Use a player who has joined this server.");
+                return true;
+            }
             if (args[2].equalsIgnoreCase("paid")) {
                 if (auctions.resolveRefundReview(target.getUniqueId(), true))
                     sender.sendMessage("§aMarked refund paid and cleared pending debt. Confirmed by your balance review.");
@@ -56,6 +64,10 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("recover")) {
             org.bukkit.OfflinePlayer target = plugin.getServer().getOfflinePlayer(args[1]);
+            if (!target.isOnline() && !target.hasPlayedBefore()) {
+                sender.sendMessage("§cUnknown player. Use a player who has joined this server.");
+                return true;
+            }
             double amount = auctions.pendingRefund(target.getUniqueId());
             String review = auctions.refundReview(target.getUniqueId());
             if (amount <= 0) sender.sendMessage("§cNo pending refund for that player.");
@@ -111,7 +123,8 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
             if (!auctions.isActive()) sender.sendMessage("§7No active auction.");
             else sender.sendMessage("§6Auction: §f" + auctions.auctionItem().getType() + " §7| Bid: §a"
                     + plugin.economy().format(auctions.currentBid()) + " §7| Top: §e"
-                    + auctions.highestBidderName() + " §7| Time: §e" + auctions.secondsLeft() + "s");
+                    + auctions.highestBidderName() + " §7| Time: §e" + auctions.secondsLeft() + "s"
+                    + (auctions.settlementReview().isEmpty() ? "" : " §7| Review: §c" + auctions.settlementReview()));
             return true;
         }
         if (args.length == 3 && args[0].equalsIgnoreCase("start")) {
