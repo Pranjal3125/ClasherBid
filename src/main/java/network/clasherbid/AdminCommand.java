@@ -126,7 +126,7 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         if (args.length == 1 && args[0].equalsIgnoreCase("status")) {
-            if (!auctions.isActive()) sender.sendMessage("§7No active auction.");
+            if (!auctions.isActive()) sender.sendMessage(auctions.isRecoveryBlocked() ? "§cSaved auction data is corrupt. New auctions are disabled; inspect active-auction.yml and restore it manually." : "§7No active auction.");
             else sender.sendMessage("§6Auction: §f" + auctions.auctionItem().getType() + " §7| Bid: §a"
                     + plugin.economy().format(auctions.currentBid()) + " §7| Top: §e"
                     + auctions.highestBidderName() + " §7| Time: §e" + auctions.secondsLeft() + "s"
@@ -134,6 +134,10 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         if (args.length == 3 && args[0].equalsIgnoreCase("start")) {
+            if (auctions.isRecoveryBlocked()) {
+                sender.sendMessage("§cSaved auction data is corrupt. Restore active-auction.yml manually before starting another auction.");
+                return true;
+            }
             if (!(sender instanceof Player player)) { sender.sendMessage("§cOnly an in-game admin can start an auction."); return true; }
             long minutes; double price;
             try { minutes = Long.parseLong(args[1]); price = Double.parseDouble(args[2]); }
