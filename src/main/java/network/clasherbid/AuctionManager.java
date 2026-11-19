@@ -607,7 +607,7 @@ public final class AuctionManager implements Listener {
         } else if (stored != null) {
             corrupt = true;
         }
-        if (corrupt || (stored != null && pending.isEmpty())) {
+        if (corrupt || (stored != null && pending.isEmpty() && (raw == null || !raw.isEmpty()))) {
             plugin.getConfig().set(reviewPath, "CLAIM_DATA_CORRUPT");
             if (!persistConfig()) plugin.getLogger().severe("Corrupt pending delivery data could not be marked for review: " + player.getUniqueId());
             player.sendMessage("§cPending delivery data is invalid and has been frozen. Contact an admin; no items were delivered.");
