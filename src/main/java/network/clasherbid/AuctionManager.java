@@ -386,7 +386,10 @@ public final class AuctionManager implements Listener {
                 pendingRefundAmount = 0;
             }
             settlementReview = "";
-            if (persist()) return true;
+            if (persist()) {
+                schedule();
+                return true;
+            }
             // Keep the accepted-bid journal exactly as it was if the auction save fails.
             settlementReview = "BID_PENDING_ACCEPTED";
             pendingRefundPlayer = previousRefundPlayer;
@@ -443,7 +446,10 @@ public final class AuctionManager implements Listener {
         pendingBidderName = "";
         pendingBidAmount = 0;
         pendingBidTransactionId = null;
-        if (persist()) return true;
+        if (persist()) {
+            schedule();
+            return true;
+        }
         // If the accepted journal was already saved, never roll memory back to an unpaid BID_PENDING state.
         if (acceptedJournalPersisted) {
             bidder = intentBidder;
