@@ -81,14 +81,21 @@ public final class AuctionGui implements Listener, CommandExecutor {
         ItemStack display = auctions.auctionItem();
         if (display == null) return new ItemStack(Material.BARRIER);
         ItemMeta meta = display.getItemMeta();
-        meta.setDisplayName("§6§lAuction Item");
-        List<String> lore = new ArrayList<>(List.of(
-                "§7" + (auctions.highestBidder() == null ? "Starting price: §a" : "Current bid: §a")
-                        + plugin.economy().format(auctions.currentBid()),
-                "§7Minimum next bid: §e" + plugin.economy().format(auctions.nextMinimum()),
-                "§7Highest bidder: §f" + (auctions.highestBidderName().isEmpty() ? "None" : auctions.highestBidderName()),
-                "§7Time remaining: §e" + auctions.secondsLeft() + "s", "",
-                "§aChoose a bid amount below.", "", "§6Recent bids:"));
+        List<String> lore = new ArrayList<>();
+        if (meta.hasLore() && meta.getLore() != null) {
+            lore.addAll(meta.getLore());
+            if (!lore.isEmpty()) lore.add("");
+        }
+        lore.add("§6§lAuction details");
+        lore.add("§7" + (auctions.highestBidder() == null ? "Starting price: §a" : "Current bid: §a")
+                + plugin.economy().format(auctions.currentBid()));
+        lore.add("§7Minimum next bid: §e" + plugin.economy().format(auctions.nextMinimum()));
+        lore.add("§7Highest bidder: §f" + (auctions.highestBidderName().isEmpty() ? "None" : auctions.highestBidderName()));
+        lore.add("§7Time remaining: §e" + auctions.secondsLeft() + "s");
+        lore.add("");
+        lore.add("§aChoose a bid amount below.");
+        lore.add("");
+        lore.add("§6Recent bids:");
         if (auctions.recentBids().isEmpty()) lore.add("§7No bids yet");
         else auctions.recentBids().stream().limit(5).forEach(b -> lore.add("§7" + b));
         meta.setLore(lore);
