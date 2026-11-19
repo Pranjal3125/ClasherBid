@@ -77,7 +77,7 @@ public final class AuctionManager implements Listener {
 
     public boolean start(Player admin, ItemStack stack, double openingBid, long durationSeconds) {
         if (active || recoveryBlocked || stack == null || stack.getType().isAir() || stack.getAmount() <= 0 || durationSeconds < 30
-                || !Double.isFinite(openingBid) || openingBid < 0) return false;
+                || !Double.isFinite(openingBid) || openingBid <= 0) return false;
         auctionId = UUID.randomUUID();
         item = stack.clone();
         seller = admin.getUniqueId();
@@ -948,7 +948,7 @@ public final class AuctionManager implements Listener {
             plugin.getLogger().severe("Saved auction is marked active but its item or seller data is missing/invalid. The original file was preserved; new auctions are disabled until manual file-level recovery.");
             return;
         }
-        boolean invalidCoreState = !Double.isFinite(currentBid) || currentBid < 0
+        boolean invalidCoreState = !Double.isFinite(currentBid) || currentBid <= 0
                 || !Double.isFinite(escrow) || escrow < 0 || endsAt <= 0
                 || (bidder == null && escrow > 0)
                 || (bidder != null && (bidder.equals(seller) || bidderName == null || bidderName.isBlank()
