@@ -859,6 +859,7 @@ public final class AuctionManager implements Listener {
                     || !Double.isFinite(pendingBidAmount) || pendingBidAmount <= 0))
                 || (settlementReview.equals("BID_PENDING_ACCEPTED") && pendingBidder != null));
         if (invalidCoreState || invalidPendingBid) {
+            recoveryBlocked = true;
             settlementReview = "AUCTION_DATA_CORRUPT";
             plugin.getLogger().severe("Saved auction data failed integrity checks. Auction frozen; inspect active-auction.yml and economy balances before recovery.");
         }
