@@ -372,6 +372,10 @@ public final class AuctionManager implements Listener {
             }
             settlementReview = "PAYOUT_COMPLETED";
             if (!persist()) return;
+            Player payoutRecipient = Bukkit.getPlayer(payee);
+            if (payoutRecipient != null) {
+                payoutRecipient.sendMessage("§aAuction payout of §e" + economy.format(escrow) + " §ahas been credited.");
+            }
             if (!queueDelivery(bidder, item, "auction-" + auctionTransactionId() + "-winner")) return;
             claimIfOnline(bidder);
             if (!recordHistory(bidderName, currentBid, auctionTransactionId())) return;
