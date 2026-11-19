@@ -913,12 +913,13 @@ public final class AuctionManager implements Listener {
         }
         if (!file.exists()) return;
         YamlConfiguration yaml = YamlConfiguration.loadConfiguration(file);
-        if (!yaml.contains("active")) {
+        Object activeValue = yaml.get("active");
+        if (!(activeValue instanceof Boolean activeFlag)) {
             recoveryBlocked = true;
-            plugin.getLogger().severe("Saved auction file is missing its active flag. Original file preserved; command-based auction operations are disabled.");
+            plugin.getLogger().severe("Saved auction file has a missing or invalid active flag. Original file preserved; command-based auction operations are disabled.");
             return;
         }
-        if (!yaml.getBoolean("active")) return;
+        if (!activeFlag) return;
         item = yaml.getItemStack("item");
         seller = parseUuid(yaml.getString("seller"));
         bidder = parseUuid(yaml.getString("bidder"));
