@@ -249,6 +249,9 @@ public final class AuctionManager implements Listener {
                 Bukkit.broadcastMessage("§cClasherBid: previous bidder refund could not be saved; auction frozen for admin review.");
                 return "§eBid received, but refund accounting could not be saved. Auction frozen for admin review.";
             }
+            if (!recoverRefund(pendingRefundPlayer)) {
+                Bukkit.broadcastMessage("§eClasherBid: previous bidder refund is queued but needs admin recovery review.");
+            }
             pendingRefundPlayer = null;
             pendingRefundAmount = 0;
         }
@@ -447,6 +450,9 @@ public final class AuctionManager implements Listener {
                 }
                 acceptedJournalPersisted = true;
                 if (!queueRefund(pendingRefundPlayer, pendingRefundAmount, "outbid-" + intentTransactionId)) return false;
+                if (!recoverRefund(pendingRefundPlayer)) {
+                    plugin.getLogger().warning("Previous bidder refund remains queued for guarded admin recovery: " + pendingRefundPlayer);
+                }
                 pendingRefundPlayer = null;
                 pendingRefundAmount = 0;
             }
