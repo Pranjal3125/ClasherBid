@@ -798,7 +798,10 @@ public final class AuctionManager implements Listener {
             player.sendMessage("§cPending delivery data is invalid and has been frozen. Contact an admin; no items were delivered.");
             return;
         }
-        if (pending.isEmpty()) return;
+        if (pending.isEmpty()) {
+            player.sendMessage("§7You have no pending auction items to claim.");
+            return;
+        }
 
         // Conservative preflight: require enough empty storage slots for every stack
         // so a full inventory cannot cause a partial claim during normal operation.
