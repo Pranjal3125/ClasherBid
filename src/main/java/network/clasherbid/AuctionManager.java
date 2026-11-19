@@ -407,6 +407,7 @@ public final class AuctionManager implements Listener {
         UUID intentTransactionId = pendingBidTransactionId;
         UUID previousRefundPlayer = pendingRefundPlayer;
         double previousRefundAmount = pendingRefundAmount;
+        java.util.List<String> previousBidHistory = new java.util.ArrayList<>(bidHistory);
         String intentName = pendingBidderName;
         double intentAmount = pendingBidAmount;
         boolean acceptedJournalPersisted = false;
@@ -434,6 +435,8 @@ public final class AuctionManager implements Listener {
                     pendingBidAmount = intentAmount;
                     pendingRefundPlayer = previousRefundPlayer;
                     pendingRefundAmount = previousRefundAmount;
+                    bidHistory.clear();
+                    bidHistory.addAll(previousBidHistory);
                     return false;
                 }
                 acceptedJournalPersisted = true;
@@ -478,6 +481,8 @@ public final class AuctionManager implements Listener {
         pendingBidTransactionId = intentTransactionId;
         pendingRefundPlayer = previousRefundPlayer;
         pendingRefundAmount = previousRefundAmount;
+        bidHistory.clear();
+        bidHistory.addAll(previousBidHistory);
         return false;
     }
 
