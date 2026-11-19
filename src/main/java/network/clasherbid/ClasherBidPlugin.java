@@ -23,6 +23,11 @@ public final class ClasherBidPlugin extends JavaPlugin {
         gui = new AuctionGui(this, auctions);
         getServer().getPluginManager().registerEvents(auctions, this);
         getServer().getPluginManager().registerEvents(gui, this);
+        if (getCommand("bid") == null || getCommand("clasherbid") == null) {
+            getLogger().severe("Required commands are missing from plugin.yml. Disabling ClasherBid.");
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
         getCommand("bid").setExecutor(gui);
         AdminCommand adminCommand = new AdminCommand(this, auctions);
         getCommand("clasherbid").setExecutor(adminCommand);
