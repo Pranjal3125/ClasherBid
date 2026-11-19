@@ -401,6 +401,7 @@ public final class AuctionManager implements Listener {
         double previousRefundAmount = pendingRefundAmount;
         String intentName = pendingBidderName;
         double intentAmount = pendingBidAmount;
+        boolean acceptedJournalPersisted = false;
         if (paid) {
             bidder = intentBidder;
             bidderName = intentName;
@@ -427,6 +428,7 @@ public final class AuctionManager implements Listener {
                     pendingRefundAmount = previousRefundAmount;
                     return false;
                 }
+                acceptedJournalPersisted = true;
                 if (!queueRefund(pendingRefundPlayer, pendingRefundAmount, "outbid-" + intentTransactionId)) return false;
                 pendingRefundPlayer = null;
                 pendingRefundAmount = 0;
@@ -438,6 +440,21 @@ public final class AuctionManager implements Listener {
         pendingBidAmount = 0;
         pendingBidTransactionId = null;
         if (persist()) return true;
+        // If the accepted journal was already saved, never roll memory back to an unpaid BID_PENDING state.
+        if (acceptedJournalPersisted) {
+            bidder = intentBidder;
+            bidderName = intentName;
+            currentBid = intentAmount;
+            escrow = intentAmount;
+            settlementReview = "BID_PENDING_ACCEPTED";
+            pendingBidder = null;
+            pendingBidderName = "";
+            pendingBidAmount = 0;
+            pendingBidTransactionId = intentTransactionId;
+            pendingRefundPlayer = null;
+            pendingRefundAmount = 0;
+            return false;
+        }
         // Restore in-memory frozen intent if the save failed; keep the server frozen.
         bidder = previousBidder;
         bidderName = previousBidderName;
