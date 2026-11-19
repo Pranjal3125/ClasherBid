@@ -122,7 +122,7 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
             List<String> entries = auctions.auctionHistory();
             sender.sendMessage("§6§lClasherBid History §7(Recent 25)");
             if (entries.isEmpty()) sender.sendMessage("§7No recorded auctions yet.");
-            else entries.stream().limit(10).forEach(entry -> sender.sendMessage("§7- §f" + entry));
+            else entries.stream().limit(25).forEach(entry -> sender.sendMessage("§7- §f" + entry));
             return true;
         }
         if (args.length == 1 && args[0].equalsIgnoreCase("status")) {
