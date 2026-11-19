@@ -217,6 +217,12 @@ public final class AuctionManager implements Listener {
             // Keep the refund source in the auction journal until its idempotent ledger entry is durable.
             pendingRefundPlayer = previousBidder;
             pendingRefundAmount = previousEscrow;
+            // Persist the accepted bid and refund liability before writing the refund ledger.
+            // A crash after the ledger write can then only recover through BID_PENDING_ACCEPTED.
+            if (!persist()) {
+                Bukkit.broadcastMessage("§cClasherBid: accepted bid journal could not be saved; auction frozen for admin review.");
+                return "§eBid payment accepted, but recovery state could not be saved. Auction frozen for admin review.";
+            }
             if (!queueRefund(pendingRefundPlayer, pendingRefundAmount, "outbid-" + pendingBidTransactionId)) {
                 Bukkit.broadcastMessage("§cClasherBid: previous bidder refund could not be saved; auction frozen for admin review.");
                 return "§eBid received, but refund accounting could not be saved. Auction frozen for admin review.";
@@ -371,13 +377,24 @@ public final class AuctionManager implements Listener {
             if (previousBidder != null && previousEscrow > 0) {
                 pendingRefundPlayer = previousBidder;
                 pendingRefundAmount = previousEscrow;
-                if (!queueRefund(pendingRefundPlayer, pendingRefundAmount, "outbid-" + intentTransactionId)) {
+                settlementReview = "BID_PENDING_ACCEPTED";
+                pendingBidder = null;
+                pendingBidderName = "";
+                pendingBidAmount = 0;
+                if (!persist()) {
                     bidder = previousBidder;
                     bidderName = previousBidderName;
                     currentBid = previousBid;
                     escrow = previousEscrow;
+                    settlementReview = previousReview;
+                    pendingBidder = intentBidder;
+                    pendingBidderName = intentName;
+                    pendingBidAmount = intentAmount;
+                    pendingRefundPlayer = previousRefundPlayer;
+                    pendingRefundAmount = previousRefundAmount;
                     return false;
                 }
+                if (!queueRefund(pendingRefundPlayer, pendingRefundAmount, "outbid-" + intentTransactionId)) return false;
                 pendingRefundPlayer = null;
                 pendingRefundAmount = 0;
             }
