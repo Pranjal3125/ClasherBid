@@ -11,6 +11,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -170,6 +171,13 @@ public final class AuctionGui implements Listener, CommandExecutor {
                 pendingConfirm.remove(player.getUniqueId());
                 open(player);
             }
+        }
+    }
+
+    @EventHandler
+    public void onClose(InventoryCloseEvent event) {
+        if (CONFIRM_TITLE.equals(event.getView().getTitle())) {
+            pendingConfirm.remove(event.getPlayer().getUniqueId());
         }
     }
 
