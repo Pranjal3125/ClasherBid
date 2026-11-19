@@ -133,7 +133,9 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
                     + plugin.economy().format(auctions.currentBid()) + " §7| Top: §e"
                     + (auctions.highestBidderName().isBlank() ? "None" : auctions.highestBidderName())
                     + " §7| Time: §e" + auctions.secondsLeft() + "s"
-                    + (auctions.settlementReview().isEmpty() ? "" : " §7| Review: §c" + auctions.settlementReview()));
+                    + " §7| Escrow: §a" + plugin.economy().format(auctions.highestBidder() == null ? 0 : auctions.currentBid())
+                    + (auctions.settlementReview().isEmpty() ? "" : " §7| Review: §c" + auctions.settlementReview())
+                    + (auctions.isRecoveryBlocked() ? " §c| RECOVERY BLOCKED" : ""));
             return true;
         }
         if (args.length == 3 && args[0].equalsIgnoreCase("start")) {
