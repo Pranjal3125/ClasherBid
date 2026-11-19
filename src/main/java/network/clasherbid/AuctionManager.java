@@ -555,9 +555,20 @@ public final class AuctionManager implements Listener {
         Object previousValue = plugin.getConfig().get(path);
         java.util.List<?> raw = plugin.getConfig().getList(path);
         java.util.List<ItemStack> pending = new java.util.ArrayList<>();
-        if (raw != null) for (Object value : raw) if (value instanceof ItemStack old) pending.add(old.clone());
-        ItemStack legacy = plugin.getConfig().getItemStack(path);
-        if (pending.isEmpty() && legacy != null) pending.add(legacy.clone());
+        if (raw != null) {
+            for (Object value : raw) {
+                if (value instanceof ItemStack old && !old.getType().isAir() && old.getAmount() > 0) pending.add(old.clone());
+                else {
+                    plugin.getLogger().severe("Refusing to append delivery: existing pending-delivery data is corrupt for " + playerId);
+                    return false;
+                }
+            }
+        } else if (previousValue instanceof ItemStack legacy && !legacy.getType().isAir() && legacy.getAmount() > 0) {
+            pending.add(legacy.clone());
+        } else if (previousValue != null) {
+            plugin.getLogger().severe("Refusing to overwrite unsupported pending-delivery data for " + playerId);
+            return false;
+        }
         pending.add(stack.clone());
         plugin.getConfig().set(path, pending);
         plugin.getConfig().set(tx + ".player", playerId.toString());
