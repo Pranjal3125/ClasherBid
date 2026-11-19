@@ -66,6 +66,7 @@ public final class AuctionManager implements Listener {
         if (!active) return 0;
         double increment = plugin.getConfig().getDouble("minimum-increment", 100.0);
         if (!Double.isFinite(increment) || increment <= 0) increment = 100.0;
+        if (bidder == null) return currentBid;
         double minimum = currentBid + increment;
         return Double.isFinite(minimum) ? minimum : Double.MAX_VALUE;
     }
