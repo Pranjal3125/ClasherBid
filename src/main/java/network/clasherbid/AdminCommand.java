@@ -102,7 +102,9 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         if (args.length == 1 && args[0].equalsIgnoreCase("settlement")) {
-            if (auctions.settlementReview().isEmpty()) sender.sendMessage("§aNo settlement is frozen for review.");
+            if (auctions.isRecoveryBlocked() && auctions.settlementReview().isEmpty())
+                sender.sendMessage("§cAuction recovery is blocked by invalid saved data. Inspect active-auction.yml; command-based settlement is disabled.");
+            else if (auctions.settlementReview().isEmpty()) sender.sendMessage("§aNo settlement is frozen for review.");
             else sender.sendMessage("§cSettlement review required: §e" + auctions.settlementReview()
                     + " §7| Auction: §f" + (auctions.auctionItem() == null ? "unknown" : auctions.auctionItem().getType())
                     + " §7| Winner: §e" + auctions.highestBidderName()
