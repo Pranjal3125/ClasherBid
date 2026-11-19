@@ -819,7 +819,7 @@ public final class AuctionManager implements Listener {
         }
         long requiredSlots = 0;
         for (ItemStack stack : pending) {
-            int maxStack = Math.max(1, stack.getMaxStackSize());
+            int maxStack = Math.max(1, Math.min(stack.getMaxStackSize(), player.getInventory().getMaxStackSize()));
             requiredSlots += (stack.getAmount() + (long) maxStack - 1L) / maxStack;
         }
         if (emptySlots < requiredSlots) {
