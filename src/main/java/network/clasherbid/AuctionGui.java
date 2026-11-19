@@ -62,13 +62,13 @@ public final class AuctionGui implements Listener, CommandExecutor {
             gui.setItem(10, button(Material.EMERALD, "§aBid minimum",
                     List.of("§7Amount: §e" + plugin.economy().format(auctions.nextMinimum()),
                             "§7Balance: §e" + plugin.economy().format(balance)), "minimum"));
-            gui.setItem(11, button(Material.GOLD_INGOT, "§6Bid +$500",
+            gui.setItem(11, button(Material.GOLD_INGOT, "§6Bid +500",
                     List.of("§7Amount: §e" + plugin.economy().format(auctions.currentBid() + 500),
                             "§7Balance: §e" + plugin.economy().format(balance)), "plus500"));
-            gui.setItem(12, button(Material.DIAMOND, "§bBid +$1,000",
+            gui.setItem(12, button(Material.DIAMOND, "§bBid +1,000",
                     List.of("§7Amount: §e" + plugin.economy().format(auctions.currentBid() + 1000),
                             "§7Balance: §e" + plugin.economy().format(balance)), "plus1000"));
-            gui.setItem(14, button(Material.EMERALD_BLOCK, "§aBid +$5,000",
+            gui.setItem(14, button(Material.EMERALD_BLOCK, "§aBid +5,000",
                     List.of("§7Amount: §e" + plugin.economy().format(auctions.currentBid() + 5000),
                             "§7Balance: §e" + plugin.economy().format(balance)), "plus5000"));
             gui.setItem(15, button(Material.PAPER, "§eCustom bid", List.of("§7Enter amount in chat"), "custom"));
@@ -115,13 +115,13 @@ public final class AuctionGui implements Listener, CommandExecutor {
                 top.setItem(10, button(Material.EMERALD, "§aBid minimum",
                         List.of("§7Amount: §e" + plugin.economy().format(auctions.nextMinimum()),
                                 "§7Balance: §e" + plugin.economy().format(balance)), "minimum"));
-                top.setItem(11, button(Material.GOLD_INGOT, "§6Bid +$500",
+                top.setItem(11, button(Material.GOLD_INGOT, "§6Bid +500",
                         List.of("§7Amount: §e" + plugin.economy().format(auctions.currentBid() + 500),
                                 "§7Balance: §e" + plugin.economy().format(balance)), "plus500"));
-                top.setItem(12, button(Material.DIAMOND, "§bBid +$1,000",
+                top.setItem(12, button(Material.DIAMOND, "§bBid +1,000",
                         List.of("§7Amount: §e" + plugin.economy().format(auctions.currentBid() + 1000),
                                 "§7Balance: §e" + plugin.economy().format(balance)), "plus1000"));
-                top.setItem(14, button(Material.EMERALD_BLOCK, "§aBid +$5,000",
+                top.setItem(14, button(Material.EMERALD_BLOCK, "§aBid +5,000",
                         List.of("§7Amount: §e" + plugin.economy().format(auctions.currentBid() + 5000),
                                 "§7Balance: §e" + plugin.economy().format(balance)), "plus5000"));
                 top.setItem(15, button(Material.PAPER, "§eCustom bid", List.of("§7Enter amount in chat"), "custom"));
