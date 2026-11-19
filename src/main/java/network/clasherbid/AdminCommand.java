@@ -91,7 +91,7 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
                 if (auctions.resolveSettlementPaid()) sender.sendMessage("§aConfirmed paid: item delivery finalized. No second payout was made.");
                 else sender.sendMessage("§cNo frozen settlement could be resolved.");
             } else if (args[1].equalsIgnoreCase("unpaid")) {
-                if (auctions.resolveSettlementUnpaid()) sender.sendMessage("§eConfirmed unpaid: item returned; bidder refund attempted (check refund recovery if needed).");
+                if (auctions.resolveSettlementUnpaid()) sender.sendMessage("§eConfirmed unpaid: item queued for seller; bidder refund liability recorded for guarded recovery.");
                 else sender.sendMessage("§cNo frozen settlement could be resolved.");
             } else sender.sendMessage("§cUsage: /clasherbid settlement <paid|unpaid>");
             return true;
