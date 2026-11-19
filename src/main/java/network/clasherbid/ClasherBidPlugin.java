@@ -1,7 +1,6 @@
 package network.clasherbid;
 
 import net.milkbowl.vault.economy.Economy;
-import org.bukkit.Bukkit;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -12,9 +11,15 @@ public final class ClasherBidPlugin extends JavaPlugin {
 
     @Override public void onEnable() {
         saveDefaultConfig();
+        // Let all plugins finish onEnable before checking Vault service registrations.
+        getServer().getScheduler().runTask(this, this::initialize);
+    }
+
+    private void initialize() {
+        if (!isEnabled()) return;
         RegisteredServiceProvider<Economy> rsp = getServer().getServicesManager().getRegistration(Economy.class);
         if (rsp == null || rsp.getProvider() == null) {
-            getLogger().severe("No Vault economy provider found. Disabling ClasherBid.");
+            getLogger().severe("No Vault economy provider found after plugin initialization. Disabling ClasherBid.");
             getServer().getPluginManager().disablePlugin(this);
             return;
         }
@@ -35,6 +40,10 @@ public final class ClasherBidPlugin extends JavaPlugin {
         auctions.load();
         getLogger().info("ClasherBid enabled with " + economy.getName());
     }
-    @Override public void onDisable() { if (auctions != null) auctions.shutdown(); }
+
+    @Override public void onDisable() {
+        if (auctions != null) auctions.shutdown();
+    }
+
     public Economy economy() { return economy; }
 }
