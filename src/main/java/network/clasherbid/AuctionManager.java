@@ -735,7 +735,26 @@ public final class AuctionManager implements Listener {
             auctionId = UUID.randomUUID();
             if (settlementReview.isEmpty()) settlementReview = "AUCTION_ID_MIGRATION_PENDING";
         }
-        active = item != null && seller != null;
+        active = item != null && !item.getType().isAir() && seller != null;
+        if (!active) {
+            plugin.getLogger().severe("Saved auction is marked active but its item or seller data is missing/invalid. The original file was preserved; manual file-level recovery is required.");
+            return;
+        }
+        boolean invalidCoreState = !Double.isFinite(currentBid) || currentBid < 0
+                || !Double.isFinite(escrow) || escrow < 0 || endsAt <= 0
+                || (bidder == null && escrow > 0)
+                || (bidder != null && (escrow <= 0 || Math.abs(escrow - currentBid) > 0.000001))
+                || ((pendingRefundPlayer == null) != (pendingRefundAmount <= 0))
+                || (pendingRefundPlayer != null && !Double.isFinite(pendingRefundAmount));
+        boolean invalidPendingBid = settlementReview.startsWith("BID_PENDING")
+                && (pendingBidTransactionId == null
+                || (settlementReview.equals("BID_PENDING") && (pendingBidder == null
+                    || !Double.isFinite(pendingBidAmount) || pendingBidAmount <= 0))
+                || (settlementReview.equals("BID_PENDING_ACCEPTED") && pendingBidder != null));
+        if (invalidCoreState || invalidPendingBid) {
+            settlementReview = "AUCTION_DATA_CORRUPT";
+            plugin.getLogger().severe("Saved auction data failed integrity checks. Auction frozen; inspect active-auction.yml and economy balances before recovery.");
+        }
         if (active && migratedAuctionId && !persist()) {
             plugin.getLogger().severe("Legacy auction ID migration could not be persisted; auction remains frozen for admin settlement review.");
         }
