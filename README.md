@@ -21,6 +21,7 @@ All admin commands require `clasherbid.admin` (default: op).
 - `/clasherbid cancel` — freeze the auction for manual reconciliation. It does not automatically refund or return the item.
 - `/clasherbid status` — show the active auction.
 - `/clasherbid history` — show recent auction history.
+- `/clasherbid retry` — retry settlement after fixing an invalid configured payout account.
 - `/clasherbid settlement` — inspect the frozen auction/recovery state.
 - `/clasherbid settlement paid` — confirm the winner payout already happened; queues the winner's item without paying again.
 - `/clasherbid settlement unpaid` — confirm no payout happened; queues the seller's item and records any bidder refund as a recovery liability.
@@ -57,7 +58,7 @@ Before live use, test at least:
 ## Recovery guidance
 
 - For `BID_PENDING`, check the bidder's balance before using `/clasherbid bid-review paid` or `unpaid`. If the bid state is already `BID_PENDING_ACCEPTED`, only `paid` can clear the marker.
-- For payout/settlement review, inspect `/clasherbid settlement` and verify the Vault balance, seller payout, and item delivery before choosing `paid` or `unpaid`. The first choice is durably recorded and locks recovery to that decision; do not try the opposite option afterward.
+- For payout/settlement review, inspect `/clasherbid settlement` and verify the Vault balance, seller payout, and item delivery before choosing `paid` or `unpaid`. The first choice is durably recorded and locks recovery to that decision; do not try the opposite option afterward. A failed Vault payout response pauses bidding and retries after 60 seconds; an invalid configured payout account requires fixing `payout-player` and using `/clasherbid retry`.
 - For refund review, verify the recipient's balance before `/clasherbid refund-review <player> paid|unpaid`.
 - For claim review, inspect the player's inventory before `/clasherbid claim-review <player> delivered|undelivered`.
 - For start review, check whether the admin still holds the item before `/clasherbid start-review item-removed|item-still-held`.
