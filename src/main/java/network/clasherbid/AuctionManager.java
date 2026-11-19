@@ -485,6 +485,7 @@ public final class AuctionManager implements Listener {
     private boolean recordHistory(String winner, double amount, String transactionId) {
         if (transactionId == null) return false;
         if (!recordedHistoryTransactions.add(transactionId)) return true;
+        java.util.List<String> previousHistory = new java.util.ArrayList<>(history);
         String entry = item.getType() + " | " + winner + " | " + economy.format(amount) + " | " + java.time.Instant.now();
         history.add(0, entry);
         while (history.size() > 25) history.remove(history.size() - 1);
@@ -506,7 +507,8 @@ public final class AuctionManager implements Listener {
             }
         } catch (IOException ex) {
             recordedHistoryTransactions.remove(transactionId);
-            history.remove(entry);
+            history.clear();
+            history.addAll(previousHistory);
             plugin.getLogger().log(Level.WARNING, "Could not safely save auction history; settlement remains recoverable.", ex);
             return false;
         }
