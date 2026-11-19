@@ -60,7 +60,13 @@ public final class AuctionManager implements Listener {
     public UUID highestBidder() { return bidder; }
     public String highestBidderName() { return bidderName; }
     public long secondsLeft() { return active ? Math.max(0, (endsAt - System.currentTimeMillis() + 999) / 1000) : 0; }
-    public double nextMinimum() { return active ? currentBid + plugin.getConfig().getDouble("minimum-increment", 100.0) : 0; }
+    public double nextMinimum() {
+        if (!active) return 0;
+        double increment = plugin.getConfig().getDouble("minimum-increment", 100.0);
+        if (!Double.isFinite(increment) || increment <= 0) increment = 100.0;
+        double minimum = currentBid + increment;
+        return Double.isFinite(minimum) ? minimum : Double.MAX_VALUE;
+    }
     private final java.util.ArrayDeque<String> bidHistory = new java.util.ArrayDeque<>();
     public java.util.List<String> recentBids() { return java.util.List.copyOf(bidHistory); }
     public java.util.List<String> auctionHistory() { return java.util.List.copyOf(history); }
@@ -154,7 +160,8 @@ public final class AuctionManager implements Listener {
         if (!active) return "§cThere is no active auction.";
         if (!settlementReview.isEmpty()) return "§cThis auction is frozen for admin settlement review. Bidding is disabled.";
         if (player.getUniqueId().equals(seller)) return "§cYou cannot bid on your own auction.";
-        long cooldown = plugin.getConfig().getLong("bid-cooldown-seconds", 2) * 1000L;
+        long cooldownSeconds = Math.max(0, Math.min(3600, plugin.getConfig().getLong("bid-cooldown-seconds", 2)));
+        long cooldown = cooldownSeconds * 1000L;
         if (System.currentTimeMillis() - lastBidAt < cooldown) return "§cPlease wait before bidding again.";
         if (!Double.isFinite(amount) || amount < nextMinimum())
             return "§cMinimum next bid: §e" + economy.format(nextMinimum());
@@ -215,9 +222,10 @@ public final class AuctionManager implements Listener {
             pendingRefundPlayer = null;
             pendingRefundAmount = 0;
         }
-        if (plugin.getConfig().getBoolean("anti-sniping.enabled", true)
-                && secondsLeft() <= plugin.getConfig().getLong("anti-sniping.trigger-seconds", 15)) {
-            endsAt += plugin.getConfig().getLong("anti-sniping.extend-seconds", 30) * 1000L;
+        if (plugin.getConfig().getBoolean("anti-sniping.enabled", true)) {
+            long trigger = Math.max(0, Math.min(3600, plugin.getConfig().getLong("anti-sniping.trigger-seconds", 15)));
+            long extension = Math.max(0, Math.min(3600, plugin.getConfig().getLong("anti-sniping.extend-seconds", 30)));
+            if (extension > 0 && secondsLeft() <= trigger) endsAt += extension * 1000L;
         }
         if (!persist()) {
             Bukkit.broadcastMessage("§cClasherBid: bid accepted but persistence is uncertain; auction frozen for admin review.");
@@ -437,6 +445,10 @@ public final class AuctionManager implements Listener {
         }
         String refundPath = "recovery.refund." + playerId;
         double previous = plugin.getConfig().getDouble(refundPath, 0.0);
+        if (!Double.isFinite(previous) || previous < 0 || !Double.isFinite(previous + amount)) {
+            plugin.getLogger().severe("Invalid refund balance or overflow for " + playerId);
+            return false;
+        }
         plugin.getConfig().set(transactionPath + ".player", playerId.toString());
         plugin.getConfig().set(transactionPath + ".amount", amount);
         plugin.getConfig().set(refundPath, previous + amount);
@@ -581,11 +593,26 @@ public final class AuctionManager implements Listener {
             player.sendMessage("§cPending delivery is frozen for admin review. Contact an admin before retrying.");
             return;
         }
+        Object stored = plugin.getConfig().get(path);
         java.util.List<?> raw = plugin.getConfig().getList(path);
         java.util.List<ItemStack> pending = new java.util.ArrayList<>();
-        if (raw != null) for (Object value : raw) if (value instanceof ItemStack stack) pending.add(stack.clone());
-        ItemStack legacy = plugin.getConfig().getItemStack(path);
-        if (pending.isEmpty() && legacy != null) pending.add(legacy);
+        boolean corrupt = false;
+        if (raw != null) {
+            for (Object value : raw) {
+                if (value instanceof ItemStack stack && !stack.getType().isAir() && stack.getAmount() > 0) pending.add(stack.clone());
+                else corrupt = true;
+            }
+        } else if (stored instanceof ItemStack legacyStack && !legacyStack.getType().isAir() && legacyStack.getAmount() > 0) {
+            pending.add(legacyStack.clone());
+        } else if (stored != null) {
+            corrupt = true;
+        }
+        if (corrupt || (stored != null && pending.isEmpty())) {
+            plugin.getConfig().set(reviewPath, "CLAIM_DATA_CORRUPT");
+            if (!persistConfig()) plugin.getLogger().severe("Corrupt pending delivery data could not be marked for review: " + player.getUniqueId());
+            player.sendMessage("§cPending delivery data is invalid and has been frozen. Contact an admin; no items were delivered.");
+            return;
+        }
         if (pending.isEmpty()) return;
 
         // Persist a claim intent before inventory changes. A crash in the delivery
