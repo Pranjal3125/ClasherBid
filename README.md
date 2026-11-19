@@ -27,7 +27,8 @@ All admin commands require `clasherbid.admin` (default: op).
 - `/clasherbid settlement unpaid` — confirm no payout happened; queues the seller's item and records any bidder refund as a recovery liability.
 - `/clasherbid bid-review <paid|unpaid>` — resolve an interrupted bid withdrawal after checking the bidder's balance.
 - `/clasherbid start-review <item-removed|item-still-held>` — resolve a crash during auction start after checking the admin's inventory.
-- `/clasherbid recover <player>` — attempt a guarded refund recovery.
+- Outbid refunds are automatically attempted through guarded Vault recovery; if the economy provider fails, the liability remains frozen for admin review.
+- `/clasherbid recover <player>` — retry a recorded refund after checking its review state.
 - `/clasherbid refund-review <player> <paid|unpaid>` — resolve an uncertain refund after checking the player's balance.
 - `/clasherbid claim-review <player> <delivered|undelivered>` — resolve an interrupted item claim after checking the player's inventory.
 
