@@ -862,7 +862,7 @@ public final class AuctionManager implements Listener {
             settlementReview = "AUCTION_DATA_CORRUPT";
             plugin.getLogger().severe("Saved auction data failed integrity checks. Auction frozen; inspect active-auction.yml and economy balances before recovery.");
         }
-        if (active && migratedAuctionId && !persist()) {
+        if (active && migratedAuctionId && !invalidCoreState && !persist()) {
             plugin.getLogger().severe("Legacy auction ID migration could not be persisted; auction remains frozen for admin settlement review.");
         }
         if (active) {
