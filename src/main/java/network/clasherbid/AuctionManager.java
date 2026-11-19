@@ -83,6 +83,12 @@ public final class AuctionManager implements Listener {
         seller = admin.getUniqueId();
         bidder = null;
         bidderName = "";
+        pendingBidder = null;
+        pendingBidTransactionId = null;
+        pendingBidderName = "";
+        pendingBidAmount = 0;
+        pendingRefundPlayer = null;
+        pendingRefundAmount = 0;
         currentBid = openingBid;
         escrow = 0;
         lastBidAt = 0;
