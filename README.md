@@ -4,28 +4,31 @@ GUI-based single-item auction plugin for Clasher Network.
 
 ## Target platform
 
-- Paper API (target: Minecraft 26.2; verify matching API artifact before release)
+- Paper API: Minecraft 26.2
 - Java 25
 - Vault + a Vault-compatible economy provider
 
-## Player command
+## Player commands
 
-- `/bid` — open the auction GUI
+- `/bid` — open the live auction GUI.
+- `/auction` — alias for `/bid`.
 
 ## Admin commands
 
-- `/clasherbid start <minutes> <starting-price>` — start an auction using the item in the admin's main hand (1–120 minutes; positive starting price)
-- `/clasherbid cancel` — cancel and refund
-- `/clasherbid status` — show current auction state
-- `/clasherbid history` — recent auction history
-- `/clasherbid recover <player>` — start guarded recovery of a recorded failed refund (admin only)
-- `/clasherbid refund-review <player> <paid|unpaid>` — resolve an interrupted or uncertain refund recovery; verify economy balances before deciding
-- `/clasherbid bid-review <paid|unpaid>` — resolve an interrupted bid withdrawal; verify the bidder balance before deciding
-- `/clasherbid settlement` — inspect a frozen payout for manual review (admin only)
-- `/clasherbid settlement paid` — admin confirms payout was completed; finalizes winner item delivery
-- `/clasherbid settlement unpaid` — admin confirms no payout occurred; returns item and records the bidder refund as a recovery liability (recover separately after review)
+All admin commands require `clasherbid.admin` (default: op).
 
-Requires `clasherbid.admin` (default: op).
+- `/clasherbid start <minutes> <starting-price>` — start an auction using the item in the admin's main hand (1–120 minutes; positive starting price).
+- `/clasherbid cancel` — freeze the auction for manual reconciliation. It does not automatically refund or return the item.
+- `/clasherbid status` — show the active auction.
+- `/clasherbid history` — show recent auction history.
+- `/clasherbid settlement` — inspect the frozen auction/recovery state.
+- `/clasherbid settlement paid` — confirm the winner payout already happened; queues the winner's item without paying again.
+- `/clasherbid settlement unpaid` — confirm no payout happened; queues the seller's item and records any bidder refund as a recovery liability.
+- `/clasherbid bid-review <paid|unpaid>` — resolve an interrupted bid withdrawal after checking the bidder's balance.
+- `/clasherbid start-review <item-removed|item-still-held>` — resolve a crash during auction start after checking the admin's inventory.
+- `/clasherbid recover <player>` — attempt a guarded refund recovery.
+- `/clasherbid refund-review <player> <paid|unpaid>` — resolve an uncertain refund after checking the player's balance.
+- `/clasherbid claim-review <player> <delivered|undelivered>` — resolve an interrupted item claim after checking the player's inventory.
 
 ## Build
 
@@ -33,31 +36,30 @@ Requires `clasherbid.admin` (default: op).
 mvn clean package
 ```
 
-The output JAR is created under `target/`.
+The plugin JAR is created under `target/`.
 
-## Important status
+## Important: staging before live use
 
-This is an initial development implementation, not a verified production release. Test on a staging Paper server with a test economy before using on a live network. In particular, review restart recovery, payment/refund failure handling, offline item delivery, and GUI behavior against your exact Paper 26.2 build.
+This is an initial development implementation, not a verified production release. Test on a staging Paper server with a test economy before using it on a live network. In particular, verify restart recovery, Vault payment/refund behavior, offline item delivery, and GUI behavior against your exact Paper build and economy provider.
 
-## Settlement safety / live-server warning
+Vault economy transactions and plugin YAML persistence are not one atomic transaction. A crash during a withdrawal, refund, or payout can leave an uncertain outcome. ClasherBid deliberately freezes the affected operation for admin review rather than blindly retrying a potentially completed payment. It cannot guarantee exactly-once economy transactions across every crash window.
 
-Vault economy transactions and plugin YAML persistence are not a single atomic transaction. A server crash during a bid refund or auction settlement can leave an uncertain transaction outcome. The plugin records failed refund attempts for admin recovery, but it cannot guarantee exactly-once payouts across every crash window.
+Before live use, test at least:
 
-**Before live use:** test the following on a staging server with a test economy:
 - Restart during an active auction with and without a top bidder.
-- Outbid a player, then simulate a restart immediately afterward.
+- Outbid a player, then restart around the refund-queue write.
 - Finish an auction and restart around the payout/delivery moment.
 - Cancel an auction while a bid is escrowed.
 - Test offline winner delivery and inventory-full handling.
+- Close the confirmation GUI without submitting a bid.
+- Verify all admin recovery commands and tab completions.
 
-If a crash occurs during settlement, check the economy balance, active-auction state, pending deliveries, and refund-recovery config before manually retrying a payment. Avoid blindly issuing a second payout.
+## Recovery guidance
 
-## Bid withdrawal review
+- For `BID_PENDING`, check the bidder's balance before using `/clasherbid bid-review paid` or `unpaid`. If the bid state is already `BID_PENDING_ACCEPTED`, only `paid` can clear the marker.
+- For payout/settlement review, inspect `/clasherbid settlement` and verify the Vault balance, seller payout, and item delivery before choosing `paid` or `unpaid`.
+- For refund review, verify the recipient's balance before `/clasherbid refund-review <player> paid|unpaid`.
+- For claim review, inspect the player's inventory before `/clasherbid claim-review <player> delivered|undelivered`.
+- For start review, check whether the admin still holds the item before `/clasherbid start-review item-removed|item-still-held`.
 
-A new bid is persisted as `BID_PENDING` before Vault withdrawal. If startup finds an interrupted bid marker, the auction remains frozen for admin review. Check the bidder's balance before using `/clasherbid bid-review paid` (accepts the bid and queues the previous bidder's refund liability) or `unpaid` (discards the pending bid). If the bid state was already accepted but the marker remained, only `paid` can clear the marker; do not select unpaid.
-
-## Settlement review
-
-When an auction payout enters the Vault transaction window, ClasherBid writes a persistent `settlementReview` marker before attempting the deposit. If the server crashes in this uncertain window, the auction is frozen on startup rather than automatically paying again. Admins can inspect the frozen auction with `/clasherbid settlement`. If balances have been verified, `/clasherbid settlement paid` finalizes delivery without another payout, while `/clasherbid settlement unpaid` returns the item and attempts a bidder refund. These commands require careful manual verification.
-
-This is a conservative safety hold—not a complete automated reconciliation system. Verify the Vault economy balance, seller payout, and item delivery before taking manual action. Do not blindly retry a payout. Frozen settlement recovery is intentionally manual at this stage.
+Never issue a second payment or clear a recovery marker based only on an error message. Verify balances and inventories first. Frozen recovery is intentionally manual.
