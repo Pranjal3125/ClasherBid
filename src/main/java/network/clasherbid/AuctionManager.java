@@ -726,7 +726,13 @@ public final class AuctionManager implements Listener {
         if (previousReview.isEmpty()) return false;
         if (delivered) plugin.getConfig().set(deliveryPath, null);
         plugin.getConfig().set(reviewPath, null);
-        if (persistConfig()) return true;
+        if (persistConfig()) {
+            if (!delivered) {
+                Player target = Bukkit.getPlayer(playerId);
+                if (target != null) Bukkit.getScheduler().runTask(plugin, () -> claim(target));
+            }
+            return true;
+        }
         plugin.getConfig().set(reviewPath, previousReview);
         if (delivered) plugin.getConfig().set(deliveryPath, previousDelivery);
         return false;
