@@ -40,21 +40,38 @@ mvn clean package
 
 The plugin JAR is created under `target/`.
 
-## Important: staging before live use
+## Configuration
 
-This is an initial development implementation, not a verified production release. Test on a staging Paper server with a test economy before using it on a live network. In particular, verify restart recovery, Vault payment/refund behavior, offline item delivery, and GUI behavior against your exact Paper build and economy provider.
+- `minimum-increment` — minimum increase after the first accepted bid (default 100).
+- `bid-cooldown-seconds` — per-auction bid cooldown (0–3600; default 2).
+- `anti-sniping.enabled` — enable deadline extension near the end (default true).
+- `anti-sniping.trigger-seconds` — extension trigger window (0–3600; default 15).
+- `anti-sniping.extend-seconds` — extension duration (0–3600; default 30).
+- `payout-player` — optional existing player account to receive seller proceeds. Blank pays the auction seller. Change this in config and restart before using `/clasherbid retry`.
+
+All prices use the installed Vault economy provider. Keep regular backups of the plugin data folder, especially `active-auction.yml`, `config.yml`, and `auction-history.yml`.
+
+## Release and staging checklist
+
+**Build verification:** GitHub Actions must show the Maven build and JAR artifact upload as successful. This proves compilation/package creation only; it does not prove live-server behavior.
+
+**Install on a separate staging Paper server first**, using the same Paper build, Java runtime, Vault version, and economy provider as production. Use test accounts and disposable items.
+
+1. Confirm startup reports a Vault economy provider and ClasherBid enables without command conflicts. Verify `/bid`, `/auction`, and `/clasherbid`; confirm GriefPrevention's `/claim` remains owned by GriefPrevention.
+2. Start auctions with a normal stack, a renamed/lore item, and invalid inputs. Confirm the item is removed exactly once and the auction persists after restart.
+3. Test first bid at opening price, below-minimum bid, subsequent increment, insufficient balance, self-bid, cooldown, custom bid, cancel from chat, confirmation cancel, and anti-sniping.
+4. Outbid a player. Verify the new bidder is charged once, the previous bidder is refunded once, and both online and offline cases recover correctly.
+5. Finish with a bidder and with no bids. Verify seller payout, winner/seller item delivery, offline delivery on join, and full-inventory retry.
+6. Exercise every recovery state only with deliberately simulated test balances/items: `bid-review`, `refund-review`, `claim-review`, `start-review`, `settlement`, and `retry`. Never choose paid/unpaid without checking the test account balance and inventory.
+7. Test admin permission as a non-op without `clasherbid.admin`, then grant the permission and verify command/tab completion access.
+8. Restart during an active auction and after each simulated transaction boundary. Confirm uncertain transactions freeze for review instead of paying/refunding/delivering twice.
+9. Back up plugin data, remove the staging JAR cleanly, and verify the server starts normally without ClasherBid.
+
+**Live rollout:** take a full server/plugin-data backup, announce a short auction maintenance window, install the tested JAR, restart (do not use /reload), run `/clasherbid status`, and perform one low-value staff-only auction before opening it to players.
+
+## Transaction safety limitation
 
 Vault economy transactions and plugin YAML persistence are not one atomic transaction. A crash during a withdrawal, refund, or payout can leave an uncertain outcome. ClasherBid deliberately freezes the affected operation for admin review rather than blindly retrying a potentially completed payment. It cannot guarantee exactly-once economy transactions across every crash window.
-
-Before live use, test at least:
-
-- Restart during an active auction with and without a top bidder.
-- Outbid a player, then restart around the refund-queue write.
-- Finish an auction and restart around the payout/delivery moment.
-- Cancel an auction while a bid is escrowed.
-- Test offline winner delivery, online auto-delivery and inventory-full handling.
-- Close the confirmation GUI without submitting a bid.
-- Verify all admin recovery commands and tab completions.
 
 ## Recovery guidance
 
