@@ -148,7 +148,7 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
             catch (NumberFormatException ex) { sender.sendMessage("§cUsage: /clasherbid start <minutes> <starting-price>"); return true; }
             if (minutes < 1 || minutes > 120 || !Double.isFinite(price) || price <= 0) { sender.sendMessage("§cDuration must be 1-120 minutes and starting price must be positive."); return true; }
             ItemStack held = player.getInventory().getItemInMainHand();
-            if (held.getType() == Material.AIR) { sender.sendMessage("§cHold the auction item in your main hand."); return true; }
+            if (held.getType().isAir()) { sender.sendMessage("§cHold the auction item in your main hand."); return true; }
             if (auctions.start(player, held.clone(), price, minutes * 60L)) {
                 player.getInventory().setItemInMainHand(null);
                 if (auctions.completeStart()) sender.sendMessage("§aAuction started.");
