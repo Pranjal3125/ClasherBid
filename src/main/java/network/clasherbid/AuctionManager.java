@@ -634,7 +634,7 @@ public final class AuctionManager implements Listener {
         plugin.getConfig().set(path, remaining.isEmpty() ? null : remaining);
         plugin.getConfig().set(reviewPath, null);
         if (!persistConfig()) {
-            plugin.getConfig().set(path, raw != null ? raw : legacy);
+            plugin.getConfig().set(path, stored);
             plugin.getConfig().set(reviewPath, "CLAIM_PENDING");
             player.sendMessage("§eDelivery was attempted but its final state could not be saved. Claim is frozen for admin review; do not retry.");
             return;
