@@ -86,6 +86,11 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
             } else sender.sendMessage("§cUsage: /clasherbid start-review <item-removed|item-still-held>");
             return true;
         }
+        if (args.length == 1 && args[0].equalsIgnoreCase("retry")) {
+            if (auctions.retrySettlement()) sender.sendMessage("§aPayout retry scheduled. Verify the configured payout account before using this command.");
+            else sender.sendMessage("§cNo payout-account error is waiting for retry, or the state could not be saved.");
+            return true;
+        }
         if (args.length == 2 && args[0].equalsIgnoreCase("settlement")) {
             if (args[1].equalsIgnoreCase("paid")) {
                 if (auctions.resolveSettlementPaid()) sender.sendMessage("§aConfirmed paid: item delivery finalized. No second payout was made.");
@@ -152,6 +157,7 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage("§e/clasherbid refund-review <player> <paid|unpaid>");
         sender.sendMessage("§e/clasherbid bid-review <paid|unpaid>");
         sender.sendMessage("§e/clasherbid start-review <item-removed|item-still-held>");
+        sender.sendMessage("§e/clasherbid retry");
         sender.sendMessage("§e/clasherbid settlement");
         sender.sendMessage("§e/clasherbid settlement <paid|unpaid>");
         return true;
@@ -159,7 +165,7 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
 
     @Override public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (!sender.hasPermission("clasherbid.admin")) return List.of();
-        if (args.length == 1) return List.of("start", "cancel", "status", "history", "recover", "claim-review", "refund-review", "bid-review", "settlement", "start-review").stream()
+        if (args.length == 1) return List.of("start", "cancel", "status", "history", "recover", "claim-review", "refund-review", "bid-review", "settlement", "start-review", "retry").stream()
                 .filter(s -> s.startsWith(args[0].toLowerCase(Locale.ROOT))).collect(Collectors.toList());
         if (args.length == 2 && args[0].equalsIgnoreCase("start")) return List.of("1", "5", "10", "15", "30", "60", "120");
         if (args.length == 2 && args[0].equalsIgnoreCase("settlement")) return List.of("paid", "unpaid");
