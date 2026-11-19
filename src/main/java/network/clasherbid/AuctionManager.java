@@ -293,7 +293,11 @@ public final class AuctionManager implements Listener {
 
     public void finish() {
         if (!active) return;
-        if (!settlementReview.isEmpty() && !settlementReview.equals("PAYOUT_RETRY")) return;
+        if (!settlementReview.isEmpty() && !settlementReview.equals("PAYOUT_RETRY")) {
+            if (timer != null) timer.cancel();
+            timer = null;
+            return;
+        }
         if (settlementReview.equals("PAYOUT_RETRY")) {
             settlementReview = "";
             if (!persist()) {
