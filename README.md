@@ -57,7 +57,7 @@ Before live use, test at least:
 ## Recovery guidance
 
 - For `BID_PENDING`, check the bidder's balance before using `/clasherbid bid-review paid` or `unpaid`. If the bid state is already `BID_PENDING_ACCEPTED`, only `paid` can clear the marker.
-- For payout/settlement review, inspect `/clasherbid settlement` and verify the Vault balance, seller payout, and item delivery before choosing `paid` or `unpaid`.
+- For payout/settlement review, inspect `/clasherbid settlement` and verify the Vault balance, seller payout, and item delivery before choosing `paid` or `unpaid`. The first choice is durably recorded and locks recovery to that decision; do not try the opposite option afterward.
 - For refund review, verify the recipient's balance before `/clasherbid refund-review <player> paid|unpaid`.
 - For claim review, inspect the player's inventory before `/clasherbid claim-review <player> delivered|undelivered`.
 - For start review, check whether the admin still holds the item before `/clasherbid start-review item-removed|item-still-held`.
