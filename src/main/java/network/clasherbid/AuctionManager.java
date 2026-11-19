@@ -884,7 +884,8 @@ public final class AuctionManager implements Listener {
 
     public void shutdown() {
         if (timer != null) timer.cancel();
-        persist();
+        // Never overwrite the original file when startup detected an invalid active auction.
+        if (!recoveryBlocked) persist();
     }
 
     private boolean persist() {
