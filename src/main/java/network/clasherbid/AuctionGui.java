@@ -197,6 +197,10 @@ public final class AuctionGui implements Listener, CommandExecutor {
             Bukkit.getScheduler().runTask(plugin, () -> event.getPlayer().sendMessage("§7Custom bid cancelled."));
             return;
         }
+        if (!input.matches("(?:\\d+|\\d{1,3}(?:,\\d{3})+)(?:\\.\\d+)?")) {
+            Bukkit.getScheduler().runTask(plugin, () -> event.getPlayer().sendMessage("§cInvalid amount. Use digits with optional thousands separators, e.g. 1500 or 1,500. Reopen /bid and try again."));
+            return;
+        }
         double amount;
         try {
             amount = Double.parseDouble(input.replace(",", ""));
