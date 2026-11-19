@@ -82,6 +82,8 @@ public final class AuctionManager implements Listener {
         bidderName = "";
         currentBid = openingBid;
         escrow = 0;
+        lastBidAt = 0;
+        bidHistory.clear();
         endsAt = System.currentTimeMillis() + durationSeconds * 1000L;
         settlementReview = "START_PENDING";
         active = true;
