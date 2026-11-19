@@ -280,7 +280,15 @@ public final class AuctionManager implements Listener {
     }
 
     public void finish() {
-        if (!active || !settlementReview.isEmpty()) return;
+        if (!active) return;
+        if (!settlementReview.isEmpty() && !settlementReview.equals("PAYOUT_RETRY")) return;
+        if (settlementReview.equals("PAYOUT_RETRY")) {
+            settlementReview = "";
+            if (!persist()) {
+                settlementReview = "PAYOUT_RETRY";
+                return;
+            }
+        }
         if (bidder == null) {
             settlementReview = "DELIVERY_PENDING";
             if (!persist()) { settlementReview = ""; return; }
@@ -292,10 +300,10 @@ public final class AuctionManager implements Listener {
             if (payee == null) {
                 // Keep auction and escrow intact so the admin can fix the payout
                 // account instead of silently destroying money or the item.
-                Bukkit.broadcastMessage("§cClasherBid payout account unavailable; auction settlement paused.");
+                Bukkit.broadcastMessage("§cClasherBid payout account unavailable; auction frozen. Fix payout-player and use /clasherbid retry.");
+                settlementReview = "PAYOUT_ACCOUNT_INVALID";
                 endsAt = System.currentTimeMillis() + 60_000L;
-                persist();
-                schedule();
+                if (!persist()) plugin.getLogger().severe("Could not persist payout-account review marker; auction remains frozen in memory.");
                 return;
             }
             // Persist a transaction intent before touching Vault. If the process crashes
@@ -313,14 +321,14 @@ public final class AuctionManager implements Listener {
             }
             EconomyResponse deposit = economy.depositPlayer(Bukkit.getOfflinePlayer(payee), escrow);
             if (!deposit.transactionSuccess()) {
-                settlementReview = "";
+                settlementReview = "PAYOUT_RETRY";
                 endsAt = System.currentTimeMillis() + 60_000L;
                 if (!persist()) {
                     settlementReview = "PAYOUT_PENDING";
-                    Bukkit.broadcastMessage("§cClasherBid payout response failed, but review marker could not be cleared; auction remains frozen.");
+                    Bukkit.broadcastMessage("§cClasherBid payout failed and retry state could not be saved; auction remains frozen for admin review.");
                     return;
                 }
-                Bukkit.broadcastMessage("§cClasherBid payout failed; settlement will retry.");
+                Bukkit.broadcastMessage("§cClasherBid payout failed; bidding is paused and settlement will retry in 60 seconds.");
                 schedule();
                 return;
             }
@@ -423,10 +431,23 @@ public final class AuctionManager implements Listener {
         return false;
     }
 
+    public boolean retrySettlement() {
+        if (!active || !settlementReview.equals("PAYOUT_ACCOUNT_INVALID")) return false;
+        settlementReview = "";
+        endsAt = System.currentTimeMillis();
+        if (!persist()) {
+            settlementReview = "PAYOUT_ACCOUNT_INVALID";
+            return false;
+        }
+        schedule();
+        return true;
+    }
+
     public boolean resolveSettlementPaid() {
         boolean alreadyChosen = settlementReview.equals("SETTLEMENT_PAID_PENDING");
         if (!active || settlementReview.isEmpty() || settlementReview.startsWith("BID_PENDING")
                 || settlementReview.equals("CANCEL_PENDING") || settlementReview.equals("AUCTION_DATA_CORRUPT")
+                || settlementReview.equals("PAYOUT_ACCOUNT_INVALID") || settlementReview.equals("PAYOUT_RETRY")
                 || settlementReview.equals("SETTLEMENT_UNPAID_PENDING")
                 || bidder == null || item == null) return false;
         if (!alreadyChosen) {
@@ -814,7 +835,10 @@ public final class AuctionManager implements Listener {
             plugin.getLogger().severe("Legacy auction ID migration could not be persisted; auction remains frozen for admin settlement review.");
         }
         if (active) {
-            if (!settlementReview.isEmpty()) {
+            if (settlementReview.equals("PAYOUT_RETRY")) {
+                if (endsAt <= System.currentTimeMillis()) finish();
+                else schedule();
+            } else if (!settlementReview.isEmpty()) {
                 plugin.getLogger().severe("Auction settlement frozen for admin review: " + settlementReview
                         + ". Do NOT manually retry payout until economy balances are checked.");
             } else if (endsAt <= System.currentTimeMillis()) finish();
