@@ -467,7 +467,7 @@ public final class AuctionManager implements Listener {
 
     public boolean resolveSettlementPaid() {
         boolean alreadyChosen = settlementReview.equals("SETTLEMENT_PAID_PENDING");
-        if (!active || settlementReview.isEmpty() || settlementReview.startsWith("BID_PENDING")
+        if (!active || recoveryBlocked || settlementReview.isEmpty() || settlementReview.startsWith("BID_PENDING")
                 || settlementReview.equals("CANCEL_PENDING") || settlementReview.equals("AUCTION_DATA_CORRUPT")
                 || settlementReview.equals("PAYOUT_ACCOUNT_INVALID") || settlementReview.equals("PAYOUT_RETRY")
                 || settlementReview.equals("SETTLEMENT_UNPAID_PENDING")
@@ -488,7 +488,7 @@ public final class AuctionManager implements Listener {
 
     public boolean resolveSettlementUnpaid() {
         boolean alreadyChosen = settlementReview.equals("SETTLEMENT_UNPAID_PENDING");
-        if (!active || settlementReview.isEmpty() || settlementReview.startsWith("BID_PENDING")
+        if (!active || recoveryBlocked || settlementReview.isEmpty() || settlementReview.startsWith("BID_PENDING")
                 || settlementReview.equals("START_PENDING") || settlementReview.equals("PAYOUT_COMPLETED")
                 || settlementReview.equals("SETTLEMENT_PAID_PENDING")
                 || settlementReview.equals("AUCTION_DATA_CORRUPT") || item == null || seller == null) return false;
@@ -865,7 +865,8 @@ public final class AuctionManager implements Listener {
             plugin.getLogger().severe("Saved auction data failed integrity checks. Auction frozen; inspect active-auction.yml and economy balances before recovery.");
         }
         if (active && migratedAuctionId && !invalidCoreState && !invalidPendingBid && !persist()) {
-            plugin.getLogger().severe("Legacy auction ID migration could not be persisted; auction remains frozen for admin settlement review.");
+            recoveryBlocked = true;
+            plugin.getLogger().severe("Legacy auction ID migration could not be persisted; original file is preserved and command-based settlement is disabled.");
         }
         if (active) {
             if (settlementReview.equals("PAYOUT_RETRY")) {
