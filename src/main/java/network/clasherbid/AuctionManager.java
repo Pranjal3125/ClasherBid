@@ -37,6 +37,7 @@ public final class AuctionManager implements Listener {
     private long endsAt;
     private long lastBidAt;
     private boolean active;
+    private boolean recoveryBlocked;
     private String settlementReview = "";
     private UUID pendingBidder;
     private UUID pendingBidTransactionId;
@@ -73,7 +74,7 @@ public final class AuctionManager implements Listener {
     private void recordBid(String name, double amount) { bidHistory.addFirst(name + " : " + economy.format(amount)); while (bidHistory.size() > 8) bidHistory.removeLast(); }
 
     public boolean start(Player admin, ItemStack stack, double openingBid, long durationSeconds) {
-        if (active || stack == null || stack.getType().isAir() || durationSeconds < 30
+        if (active || recoveryBlocked || stack == null || stack.getType().isAir() || durationSeconds < 30
                 || !Double.isFinite(openingBid) || openingBid < 0) return false;
         auctionId = UUID.randomUUID();
         item = stack.clone();
@@ -813,7 +814,8 @@ public final class AuctionManager implements Listener {
         }
         active = item != null && !item.getType().isAir() && seller != null;
         if (!active) {
-            plugin.getLogger().severe("Saved auction is marked active but its item or seller data is missing/invalid. The original file was preserved; manual file-level recovery is required.");
+            recoveryBlocked = true;
+            plugin.getLogger().severe("Saved auction is marked active but its item or seller data is missing/invalid. The original file was preserved; new auctions are disabled until manual file-level recovery.");
             return;
         }
         boolean invalidCoreState = !Double.isFinite(currentBid) || currentBid < 0
