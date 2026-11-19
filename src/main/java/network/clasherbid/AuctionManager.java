@@ -183,16 +183,18 @@ public final class AuctionManager implements Listener {
         }
         EconomyResponse withdrawal = economy.withdrawPlayer(player, amount);
         if (!withdrawal.transactionSuccess()) {
+            UUID failedTransactionId = pendingBidTransactionId;
             settlementReview = "";
             pendingBidder = null;
             pendingBidderName = "";
             pendingBidAmount = 0;
+            pendingBidTransactionId = null;
             if (!persist()) {
                 settlementReview = "BID_PENDING";
                 pendingBidder = player.getUniqueId();
                 pendingBidderName = player.getName();
                 pendingBidAmount = amount;
-                pendingBidTransactionId = pendingBidTransactionId;
+                pendingBidTransactionId = failedTransactionId;
                 Bukkit.broadcastMessage("§cClasherBid: failed withdrawal could not be cleared durably; auction frozen for admin review.");
                 return "§eBid was not accepted, but auction is frozen for admin review.";
             }
@@ -516,8 +518,13 @@ public final class AuctionManager implements Listener {
     public boolean recoverRefund(UUID playerId) {
         double amount = pendingRefund(playerId);
         if (!Double.isFinite(amount) || amount <= 0 || !refundReview(playerId).isEmpty()) return false;
-        plugin.getConfig().set("recovery.refund-review." + playerId, "REFUND_PENDING");
-        if (!persistConfig()) return false;
+        String reviewPath = "recovery.refund-review." + playerId;
+        String previousReview = plugin.getConfig().getString(reviewPath, "");
+        plugin.getConfig().set(reviewPath, "REFUND_PENDING");
+        if (!persistConfig()) {
+            plugin.getConfig().set(reviewPath, previousReview.isEmpty() ? null : previousReview);
+            return false;
+        }
         EconomyResponse response = economy.depositPlayer(Bukkit.getOfflinePlayer(playerId), amount);
         if (!response.transactionSuccess()) return false; // keep marker for manual review
         plugin.getConfig().set("recovery.refund." + playerId, null);
@@ -632,8 +639,10 @@ public final class AuctionManager implements Listener {
 
         // Persist a claim intent before inventory changes. A crash in the delivery
         // window freezes this claim for manual reconciliation instead of blind retry.
+        String previousReview = plugin.getConfig().getString(reviewPath, "");
         plugin.getConfig().set(reviewPath, "CLAIM_PENDING");
         if (!persistConfig()) {
+            plugin.getConfig().set(reviewPath, previousReview.isEmpty() ? null : previousReview);
             player.sendMessage("§cCould not save claim review marker. No items were delivered; contact an admin.");
             return;
         }
