@@ -885,12 +885,14 @@ public final class AuctionManager implements Listener {
         boolean invalidCoreState = !Double.isFinite(currentBid) || currentBid < 0
                 || !Double.isFinite(escrow) || escrow < 0 || endsAt <= 0
                 || (bidder == null && escrow > 0)
-                || (bidder != null && (escrow <= 0 || Math.abs(escrow - currentBid) > 0.000001))
+                || (bidder != null && (bidder.equals(seller) || bidderName.isBlank()
+                    || escrow <= 0 || Math.abs(escrow - currentBid) > 0.000001))
                 || (pendingRefundPlayer == null && pendingRefundAmount != 0.0)
                 || (pendingRefundPlayer != null && (!Double.isFinite(pendingRefundAmount) || pendingRefundAmount <= 0));
         boolean invalidPendingBid = settlementReview.startsWith("BID_PENDING")
                 && (pendingBidTransactionId == null
                 || (settlementReview.equals("BID_PENDING") && (pendingBidder == null
+                    || pendingBidder.equals(seller) || pendingBidder.equals(bidder)
                     || !Double.isFinite(pendingBidAmount) || pendingBidAmount <= 0))
                 || (settlementReview.equals("BID_PENDING_ACCEPTED") && pendingBidder != null));
         boolean orphanedIntent = settlementReview.isEmpty()
