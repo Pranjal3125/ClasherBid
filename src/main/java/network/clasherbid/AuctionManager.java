@@ -857,15 +857,15 @@ public final class AuctionManager implements Listener {
         item = yaml.getItemStack("item");
         seller = parseUuid(yaml.getString("seller"));
         bidder = parseUuid(yaml.getString("bidder"));
-        bidderName = yaml.getString("bidderName", "");
+        bidderName = java.util.Objects.toString(yaml.getString("bidderName", ""), "");
         currentBid = yaml.getDouble("currentBid");
         escrow = yaml.getDouble("escrow");
         endsAt = yaml.getLong("endsAt");
         bidHistory.clear();
         bidHistory.addAll(yaml.getStringList("recentBids"));
-        settlementReview = yaml.getString("settlementReview", "");
+        settlementReview = java.util.Objects.toString(yaml.getString("settlementReview", ""), "");
         pendingBidder = parseUuid(yaml.getString("pendingBidder"));
-        pendingBidderName = yaml.getString("pendingBidderName", "");
+        pendingBidderName = java.util.Objects.toString(yaml.getString("pendingBidderName", ""), "");
         pendingBidAmount = yaml.getDouble("pendingBidAmount", 0.0);
         pendingBidTransactionId = parseUuid(yaml.getString("pendingBidTransactionId"));
         pendingRefundPlayer = parseUuid(yaml.getString("pendingRefundPlayer"));
@@ -885,7 +885,7 @@ public final class AuctionManager implements Listener {
         boolean invalidCoreState = !Double.isFinite(currentBid) || currentBid < 0
                 || !Double.isFinite(escrow) || escrow < 0 || endsAt <= 0
                 || (bidder == null && escrow > 0)
-                || (bidder != null && (bidder.equals(seller) || bidderName.isBlank()
+                || (bidder != null && (bidder.equals(seller) || bidderName == null || bidderName.isBlank()
                     || escrow <= 0 || Math.abs(escrow - currentBid) > 0.000001))
                 || (pendingRefundPlayer == null && pendingRefundAmount != 0.0)
                 || (pendingRefundPlayer != null && (!Double.isFinite(pendingRefundAmount) || pendingRefundAmount <= 0));
