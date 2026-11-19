@@ -561,8 +561,9 @@ public final class AuctionManager implements Listener {
     }
 
     private UUID payoutAccount() {
-        String configured = plugin.getConfig().getString("payout-player", "").trim();
-        if (configured.isEmpty()) return seller;
+        String configured = plugin.getConfig().getString("payout-player", "");
+        if (configured == null || configured.isBlank()) return seller;
+        configured = configured.trim();
         OfflinePlayer account = Bukkit.getOfflinePlayer(configured);
         if (!account.isOnline() && !account.hasPlayedBefore()) {
             plugin.getLogger().severe("Configured payout-player has never joined this server: " + configured);
