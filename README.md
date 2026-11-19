@@ -12,6 +12,7 @@ GUI-based single-item auction plugin for Clasher Network.
 
 - `/bid` — open the live auction GUI.
 - `/auction` — alias for `/bid`.
+- `/claim` — claim pending auction items without rejoining.
 
 ## Admin commands
 
@@ -52,7 +53,7 @@ Before live use, test at least:
 - Outbid a player, then restart around the refund-queue write.
 - Finish an auction and restart around the payout/delivery moment.
 - Cancel an auction while a bid is escrowed.
-- Test offline winner delivery and inventory-full handling.
+- Test offline winner delivery, online auto-delivery, `/claim`, and inventory-full handling.
 - Close the confirmation GUI without submitting a bid.
 - Verify all admin recovery commands and tab completions.
 
