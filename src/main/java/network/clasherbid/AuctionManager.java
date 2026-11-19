@@ -421,9 +421,19 @@ public final class AuctionManager implements Listener {
     }
 
     public boolean resolveSettlementPaid() {
+        boolean alreadyChosen = settlementReview.equals("SETTLEMENT_PAID_PENDING");
         if (!active || settlementReview.isEmpty() || settlementReview.startsWith("BID_PENDING")
                 || settlementReview.equals("CANCEL_PENDING") || settlementReview.equals("AUCTION_DATA_CORRUPT")
+                || settlementReview.equals("SETTLEMENT_UNPAID_PENDING")
                 || bidder == null || item == null) return false;
+        if (!alreadyChosen) {
+            String previousReview = settlementReview;
+            settlementReview = "SETTLEMENT_PAID_PENDING";
+            if (!persist()) {
+                settlementReview = previousReview;
+                return false;
+            }
+        }
         if (!queueDelivery(bidder, item, "auction-" + auctionTransactionId() + "-winner")) return false;
         if (!recordHistory(bidderName, currentBid, auctionTransactionId())) return false;
         Bukkit.broadcastMessage("§6ClasherBid §eSettlement manually confirmed paid by admin. Winner item queued for claim.");
@@ -431,9 +441,19 @@ public final class AuctionManager implements Listener {
     }
 
     public boolean resolveSettlementUnpaid() {
+        boolean alreadyChosen = settlementReview.equals("SETTLEMENT_UNPAID_PENDING");
         if (!active || settlementReview.isEmpty() || settlementReview.startsWith("BID_PENDING")
                 || settlementReview.equals("START_PENDING") || settlementReview.equals("PAYOUT_COMPLETED")
+                || settlementReview.equals("SETTLEMENT_PAID_PENDING")
                 || settlementReview.equals("AUCTION_DATA_CORRUPT") || item == null || seller == null) return false;
+        if (!alreadyChosen) {
+            String previousReview = settlementReview;
+            settlementReview = "SETTLEMENT_UNPAID_PENDING";
+            if (!persist()) {
+                settlementReview = previousReview;
+                return false;
+            }
+        }
         if (bidder != null && escrow > 0) {
             // Persist an unpaid refund liability instead of depositing immediately.
             // The guarded recovery command will require review before any payment.
