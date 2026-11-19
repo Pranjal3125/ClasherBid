@@ -76,7 +76,7 @@ public final class AuctionManager implements Listener {
     private void recordBid(String name, double amount) { bidHistory.addFirst(name + " : " + economy.format(amount)); while (bidHistory.size() > 8) bidHistory.removeLast(); }
 
     public boolean start(Player admin, ItemStack stack, double openingBid, long durationSeconds) {
-        if (active || recoveryBlocked || stack == null || stack.getType().isAir() || durationSeconds < 30
+        if (active || recoveryBlocked || stack == null || stack.getType().isAir() || stack.getAmount() <= 0 || durationSeconds < 30
                 || !Double.isFinite(openingBid) || openingBid < 0) return false;
         auctionId = UUID.randomUUID();
         item = stack.clone();
