@@ -63,4 +63,4 @@ Before live use, test at least:
 - For claim review, inspect the player's inventory before `/clasherbid claim-review <player> delivered|undelivered`.
 - For start review, check whether the admin still holds the item before `/clasherbid start-review item-removed|item-still-held`.
 
-Never issue a second payment or clear a recovery marker based only on an error message. Verify balances and inventories first. Frozen recovery is intentionally manual.
+Never issue a second payment or clear a recovery marker based only on an error message. Verify balances and inventories first. If the review state is `AUCTION_DATA_CORRUPT`, command-based settlement is intentionally blocked. The original `active-auction.yml` is preserved on shutdown; take a backup and perform file-level recovery only after checking economy balances and item ownership. Frozen recovery is intentionally manual.
