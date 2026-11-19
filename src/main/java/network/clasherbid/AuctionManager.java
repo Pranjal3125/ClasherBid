@@ -772,6 +772,10 @@ public final class AuctionManager implements Listener {
     }
 
     public void claim(Player player) {
+        claim(player, false);
+    }
+
+    public void claim(Player player, boolean notifyWhenEmpty) {
         String path = "pending-delivery." + player.getUniqueId();
         String reviewPath = "recovery.claim-review." + player.getUniqueId();
         if (!claimReview(player.getUniqueId()).isEmpty()) {
@@ -799,7 +803,7 @@ public final class AuctionManager implements Listener {
             return;
         }
         if (pending.isEmpty()) {
-            player.sendMessage("§7You have no pending auction items to claim.");
+            if (notifyWhenEmpty) player.sendMessage("§7You have no pending auction items to claim.");
             return;
         }
 
