@@ -44,10 +44,6 @@ public final class AuctionGui implements Listener, CommandExecutor {
             sender.sendMessage("Players only.");
             return true;
         }
-        if (command.getName().equalsIgnoreCase("claim")) {
-            auctions.claim(player, true);
-            return true;
-        }
         open(player);
         return true;
     }
