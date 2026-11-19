@@ -129,7 +129,8 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
         }
         if (args.length == 1 && args[0].equalsIgnoreCase("status")) {
             if (!auctions.isActive()) sender.sendMessage(auctions.isRecoveryBlocked() ? "§cSaved auction data is corrupt. New auctions are disabled; inspect active-auction.yml and restore it manually." : "§7No active auction.");
-            else sender.sendMessage("§6Auction: §f" + auctions.auctionItem().getType() + " §7| Bid: §a"
+            else sender.sendMessage("§6Auction: §f" + auctions.auctionItem().getType() + " §7| "
+                    + (auctions.highestBidder() == null ? "Starting price: §a" : "Bid: §a")
                     + plugin.economy().format(auctions.currentBid()) + " §7| Top: §e"
                     + auctions.highestBidderName() + " §7| Time: §e" + auctions.secondsLeft() + "s"
                     + (auctions.settlementReview().isEmpty() ? "" : " §7| Review: §c" + auctions.settlementReview()));
