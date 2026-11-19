@@ -45,7 +45,7 @@ public final class AuctionGui implements Listener, CommandExecutor {
             return true;
         }
         if (command.getName().equalsIgnoreCase("claim")) {
-            auctions.claim(player);
+            auctions.claim(player, true);
             return true;
         }
         open(player);
