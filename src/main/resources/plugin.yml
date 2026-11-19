@@ -8,6 +8,9 @@ commands:
     description: Open the bidding GUI
     usage: /bid
     aliases: [auction]
+  claim:
+    description: Claim pending auction items
+    usage: /claim
   clasherbid:
     description: Manage the active auction
     usage: /clasherbid <start|cancel|status|history|recover|settlement>
