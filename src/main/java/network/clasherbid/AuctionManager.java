@@ -185,7 +185,17 @@ public final class AuctionManager implements Listener {
             persist();
             return "§cBid paused: auction state could not be saved.";
         }
-        EconomyResponse withdrawal = economy.withdrawPlayer(player, amount);
+        EconomyResponse withdrawal;
+        try {
+            withdrawal = economy.withdrawPlayer(player, amount);
+        } catch (RuntimeException ex) {
+            plugin.getLogger().log(Level.SEVERE, "Vault threw during bid withdrawal; bid remains frozen for manual review.", ex);
+            return "§eBid payment result is uncertain. Auction frozen for admin review; do not retry.";
+        }
+        if (withdrawal == null) {
+            plugin.getLogger().severe("Vault returned no bid withdrawal response; bid remains frozen for manual review.");
+            return "§eBid payment result is uncertain. Auction frozen for admin review; do not retry.";
+        }
         if (!withdrawal.transactionSuccess()) {
             UUID failedTransactionId = pendingBidTransactionId;
             settlementReview = "";
@@ -320,7 +330,17 @@ public final class AuctionManager implements Listener {
                 schedule();
                 return;
             }
-            EconomyResponse deposit = economy.depositPlayer(Bukkit.getOfflinePlayer(payee), escrow);
+            EconomyResponse deposit;
+            try {
+                deposit = economy.depositPlayer(Bukkit.getOfflinePlayer(payee), escrow);
+            } catch (RuntimeException ex) {
+                plugin.getLogger().log(Level.SEVERE, "Vault threw during auction payout; payout remains frozen for manual review.", ex);
+                return;
+            }
+            if (deposit == null) {
+                plugin.getLogger().severe("Vault returned no payout response; payout remains frozen for manual review.");
+                return;
+            }
             if (!deposit.transactionSuccess()) {
                 settlementReview = "PAYOUT_RETRY";
                 endsAt = System.currentTimeMillis() + 60_000L;
@@ -594,8 +614,14 @@ public final class AuctionManager implements Listener {
             plugin.getConfig().set(reviewPath, previousReview.isEmpty() ? null : previousReview);
             return false;
         }
-        EconomyResponse response = economy.depositPlayer(Bukkit.getOfflinePlayer(playerId), amount);
-        if (!response.transactionSuccess()) return false; // keep marker for manual review
+        EconomyResponse response;
+        try {
+            response = economy.depositPlayer(Bukkit.getOfflinePlayer(playerId), amount);
+        } catch (RuntimeException ex) {
+            plugin.getLogger().log(Level.SEVERE, "Vault threw during refund recovery; refund remains frozen for manual review.", ex);
+            return false;
+        }
+        if (response == null || !response.transactionSuccess()) return false; // keep marker for manual review
         plugin.getConfig().set("recovery.refund." + playerId, null);
         plugin.getConfig().set("recovery.refund-review." + playerId, null);
         if (persistConfig()) return true;
