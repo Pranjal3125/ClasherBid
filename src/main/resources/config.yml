@@ -1,10 +1,14 @@
 # All money amounts use the server's Vault economy.
+# First bid may match the auction opening price; this increment applies afterward.
 minimum-increment: 100.0
+# Seconds between accepted bids per auction (0-3600).
 bid-cooldown-seconds: 2
 anti-sniping:
   enabled: true
+  # Extend when a bid arrives within this many seconds of the deadline (0-3600).
   trigger-seconds: 15
+  # Number of seconds added to the deadline (0-3600).
   extend-seconds: 30
-# Set this to a valid online/offline player name if payout should go to a
-# fixed account. Blank means the player who starts that auction receives it.
+# Set a valid player name if payout should go to a fixed account.
+# Blank means the player who starts the auction receives the payout.
 payout-player: ""
