@@ -688,7 +688,7 @@ public final class AuctionManager implements Listener {
 
     /** Durable, idempotent delivery queue; actual inventory changes happen only in /claim. */
     private boolean queueDelivery(UUID playerId, ItemStack stack, String transactionId) {
-        if (playerId == null || stack == null || stack.getType().isAir() || transactionId == null) return false;
+        if (playerId == null || stack == null || stack.getType().isAir() || stack.getAmount() <= 0 || transactionId == null) return false;
         String tx = "recovery.delivery-transactions." + transactionId;
         if (plugin.getConfig().contains(tx)) {
             String recordedPlayer = plugin.getConfig().getString(tx + ".player", "");
@@ -892,7 +892,7 @@ public final class AuctionManager implements Listener {
             auctionId = UUID.randomUUID();
             if (settlementReview.isEmpty()) settlementReview = "AUCTION_ID_MIGRATION_PENDING";
         }
-        active = item != null && !item.getType().isAir() && seller != null;
+        active = item != null && !item.getType().isAir() && item.getAmount() > 0 && seller != null;
         if (!active) {
             recoveryBlocked = true;
             plugin.getLogger().severe("Saved auction is marked active but its item or seller data is missing/invalid. The original file was preserved; new auctions are disabled until manual file-level recovery.");
