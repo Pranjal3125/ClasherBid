@@ -5,21 +5,46 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: clasherbid-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out source
+        uses: actions/checkout@v4
+
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '25'
           cache: maven
+
       - name: Build plugin
         run: mvn --batch-mode --no-transfer-progress clean package
+
+      - name: Verify plugin JAR
+        shell: bash
+        run: |
+          shopt -s nullglob
+          jars=(target/ClasherBid-*.jar)
+          if (( ${#jars[@]} == 0 )); then
+            echo "No ClasherBid JAR was produced."
+            exit 1
+          fi
+          printf 'Built artifact: %s\\n' "${jars[@]}"
+
       - name: Upload plugin artifact
         uses: actions/upload-artifact@v4
         with:
           name: ClasherBid-jar
           path: target/ClasherBid-*.jar
+          if-no-files-found: error
+          retention-days: 14
