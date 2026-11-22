@@ -1,14 +1,58 @@
-# All money amounts use the server's Vault economy.
-# First bid may match the auction opening price; this increment applies afterward.
+# ==============================================================================
+# ClasherBid Configuration
+# ==============================================================================
+# All monetary amounts use the server's active Vault economy provider.
+# Use /clasherbid reload after editing this file (no restart required).
+# Runtime ledgers (pending deliveries & crash-recovery markers) are stored
+# separately in ledger.yml so this file stays clean and human-editable.
+# ==============================================================================
+
+# Minimum bid increase required after the first accepted bid.
+# The very first bid on an auction may match the opening price exactly.
 minimum-increment: 100.0
-# Seconds between accepted bids per auction (0-3600).
+
+# Global cooldown (in seconds, 0-3600) between accepted bids on an auction.
 bid-cooldown-seconds: 2
+
+# Whether the current highest bidder is allowed to outbid themselves.
+# Recommended: false (prevents accidental double-bidding and self-refunds).
+allow-self-outbid: false
+
+# How long (in seconds, 5-120) a player has to type a custom bid in chat.
+custom-bid-timeout-seconds: 30
+
+# Quick-bid increment buttons shown in the /bid GUI (up to 3 positive values).
+# Each button adds this increment to the current bid (and is clamped up to
+# nextMinimum if smaller than minimum-increment).
+quick-bid-increments:
+  - 500
+  - 1000
+  - 5000
+
 anti-sniping:
+  # Extend the auction deadline when a bid arrives near the end.
   enabled: true
-  # Extend when a bid arrives within this many seconds of the deadline (0-3600).
+  # Trigger extension when remaining time is at or below this many seconds (0-3600).
   trigger-seconds: 15
-  # Number of seconds added to the deadline (0-3600).
+  # Seconds added to the auction deadline when triggered (0-3600).
   extend-seconds: 30
-# Set a valid player name if payout should go to a fixed account.
-# Blank means the player who starts the auction receives the payout.
+  # Broadcast a notice when anti-sniping extends the timer.
+  broadcast: true
+
+countdown-alerts:
+  # Broadcast remaining-time reminders as the auction approaches its end.
+  enabled: true
+  # Remaining-second thresholds at which a countdown reminder is broadcast.
+  seconds:
+    - 60
+    - 30
+    - 10
+    - 5
+
+sounds:
+  # Play subtle sound effects for GUI interactions, bids, outbids, and wins.
+  enabled: true
+
+# Optional fixed Vault account name to receive auction seller proceeds.
+# Leave blank ("") to pay the admin/player who started the auction.
 payout-player: ""

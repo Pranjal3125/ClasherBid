@@ -1,18 +1,28 @@
 name: ClasherBid
-version: 0.1.0-SNAPSHOT
+version: '${project.version}'
 main: network.clasherbid.ClasherBidPlugin
 api-version: '26.2'
+description: GUI-based single-item auction plugin with Vault escrow, anti-sniping, and crash-safe recovery
+authors: [Clasher Network]
+website: https://github.com/Pranjal3125/ClasherBid
 depend: [Vault]
+
 commands:
   bid:
-    description: Open the bidding GUI
-    usage: /bid
+    description: Open the live auction GUI, place a bid, view history, or claim won items
+    usage: /bid [amount|claim|history|status]
     aliases: [auction]
+    permission: clasherbid.bid
   clasherbid:
-    description: Manage the active auction
-    usage: /clasherbid <start|cancel|status|history|recover|settlement>
+    description: Manage auctions, recovery reviews, and plugin configuration
+    usage: /clasherbid <start|cancel|status|history|reload|recover|retry|settlement|bid-review|refund-review|claim-review|start-review>
+    aliases: [cbid]
     permission: clasherbid.admin
+
 permissions:
+  clasherbid.bid:
+    description: Open the auction GUI, place bids, view history, and claim auction items
+    default: true
   clasherbid.admin:
-    description: Manage auctions
+    description: Manage auctions, reload configuration, and perform crash-recovery reviews
     default: op

@@ -1,0 +1,44 @@
+# ==============================================================================
+# ClasherBid Messages (MiniMessage Format)
+# ==============================================================================
+# Supports full Adventure MiniMessage formatting: <gold>, <#ffaa00>, <bold>, etc.
+# Reload live with /clasherbid reload.
+# ==============================================================================
+
+prefix: "<gold><bold>CLASHERBID</bold></gold> <dark_gray>»</dark_gray> "
+
+broadcast:
+  auction-started: "<prefix><yellow>Auction started:</yellow> <white><item></white> <dark_gray>|</dark_gray> <gray>Opening:</gray> <green><price></green> <dark_gray>|</dark_gray> <gray>Duration:</gray> <yellow><time></yellow> <dark_gray>|</dark_gray> <gold><click:run_command:'/bid'><hover:show_text:'<yellow>Click to open Auction GUI</yellow>'>[/bid]</hover></click></gold>"
+  bid-placed: "<prefix><yellow><player></yellow> <gray>bid</gray> <green><amount></green> <gray>on</gray> <white><item></white> <dark_gray>(</dark_gray><yellow><time></yellow> <gray>left</gray><dark_gray>)</dark_gray>"
+  anti-snipe: "<prefix><gold>Anti-Snipe!</gold> <gray>Auction timer extended by</gray> <yellow><seconds>s</yellow> <dark_gray>(</dark_gray><yellow><time></yellow> <gray>left</gray><dark_gray>)</dark_gray>"
+  countdown: "<prefix><yellow><item></yellow> <gray>ending in</gray> <red><bold><time></bold></red><gray>! Current bid:</gray> <green><amount></green> <gold><click:run_command:'/bid'><hover:show_text:'<yellow>Click to bid now</yellow>'>[/bid]</hover></click></gold>"
+  auction-won: "<prefix><gold><bold>AUCTION ENDED!</bold></gold> <yellow><winner></yellow> <gray>won</gray> <white><item></white> <gray>for</gray> <green><amount></green><gray>!</gray>"
+  auction-no-bids: "<prefix><gray>Auction for</gray> <white><item></white> <gray>ended with no bids. Item returned to seller's claim queue.</gray>"
+
+player:
+  bid-accepted: "<prefix><green>Your bid of</green> <yellow><amount></yellow> <green>was accepted!</green> <gray>Funds are held in escrow until outbid or auction end.</gray>"
+  outbid: "<prefix><red>You were outbid by</red> <yellow><bidder></yellow> <dark_gray>(</dark_gray><green><new_bid></green><dark_gray>)</dark_gray><red>!</red> <gray>Your previous bid of</gray> <yellow><refund></yellow> <gray>has been refunded.</gray>"
+  outbid-refund-queued: "<prefix><red>You were outbid by</red> <yellow><bidder></yellow><red>!</red> <gray>Your refund of</gray> <yellow><refund></yellow> <gray>is queued for admin recovery.</gray>"
+  refund-credited: "<prefix><green>Your auction refund of</green> <yellow><amount></yellow> <green>has been credited.</green>"
+  payout-credited: "<prefix><green>Auction payout of</green> <yellow><amount></yellow> <green>has been credited to your account.</green>"
+  custom-bid-prompt: "<prefix><yellow>Type your bid amount in chat</yellow> <gray>(e.g. <white>1500</white>, <white>1,500</white>, <white>2.5k</white>), or type</gray> <red>cancel</red><gray>. Expires in <timeout>s.</gray>"
+  custom-bid-cancelled: "<prefix><gray>Custom bid cancelled.</gray>"
+  custom-bid-timeout: "<prefix><yellow>Custom bid timed out.</yellow> <gray>Run <white>/bid</white> to try again.</gray>"
+  custom-bid-invalid: "<prefix><red>Invalid amount.</red> <gray>Use numbers like <white>1500</white>, <white>1,500</white>, or <white>2.5k</white>. Run <white>/bid</white> to try again.</gray>"
+  insufficient-balance: "<prefix><red>Insufficient balance or invalid bid amount.</red>"
+  no-active-auction: "<prefix><red>There is no active auction right now.</red>"
+  auction-ended: "<prefix><red>Auction time has ended. Settlement is processing; new bids are closed.</red>"
+  auction-frozen: "<prefix><red>This auction is frozen for admin settlement review. Bidding is disabled.</red>"
+  cannot-bid-own: "<prefix><red>You cannot bid on your own auction.</red>"
+  already-highest: "<prefix><yellow>You are already the highest bidder!</yellow>"
+  bid-cooldown: "<prefix><red>Please wait <seconds>s before bidding again.</red>"
+  minimum-bid: "<prefix><red>Minimum next bid is</red> <yellow><amount></yellow><red>.</red>"
+  bid-failed: "<prefix><red>Bid failed:</red> <gray><error></gray>"
+  claim-empty: "<prefix><gray>You have no pending auction items to claim.</gray>"
+  claim-delivered: "<prefix><green>Delivered</green> <yellow><count></yellow> <green>pending auction item(s) to your inventory!</green>"
+  claim-inventory-full: "<prefix><yellow>Delivery paused:</yellow> <gray>Free at least</gray> <white><slots></white> <gray>more inventory slot(s), then run</gray> <gold>/bid claim</gold><gray>.</gray>"
+  claim-partial-remaining: "<prefix><yellow>Inventory full. Remaining items were safely kept for</yellow> <gold>/bid claim</gold><yellow>.</yellow>"
+  claim-frozen: "<prefix><red>Your pending delivery is frozen for admin review. Contact an admin before retrying.</red>"
+  claim-reminder-on-join: "<prefix><yellow>You have <count> pending auction item(s) waiting!</yellow> <gray>Free space and run</gray> <gold>/bid claim</gold><gray>.</gray>"
+  no-permission: "<prefix><red>You do not have permission to use that command.</red>"
+  players-only: "<prefix><red>This command can only be used in-game.</red>"
